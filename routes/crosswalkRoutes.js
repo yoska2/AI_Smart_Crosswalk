@@ -1,12 +1,12 @@
 import express from 'express';
-import Crosswalk from '../models/Crosswalk.js';
+import { fetchAllCrosswalks } from '../services/crosswalkService.js';
 
 const router = express.Router();
 
-// GET /api/crosswalks - Retrieve all crosswalks from DB
+// GET /api/crosswalks - Get all crosswalks via service
 router.get('/', async (req, res) => {
     try {
-        const crosswalks = await Crosswalk.find();
+        const crosswalks = await fetchAllCrosswalks();
         res.json(crosswalks);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -14,4 +14,3 @@ router.get('/', async (req, res) => {
 });
 
 export default router;
-
