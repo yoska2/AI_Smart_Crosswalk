@@ -1,0 +1,44 @@
+# ========================
+# 1. Security & Sensitive Info
+# ========================
+# קובץ חובה להסתרת מידע רגיש כמו כתובת ה-DB
+.env
+
+# ========================
+# 2. Custom Project Folders
+# ========================
+# תיקיית הספרינטים שביקשת לחסום
+sprints/
+/sprints
+
+# ========================
+# 3. Dependencies
+# ========================
+# תיקיית הספריות (כבדה מאוד ונוצרת אוטומטית ע"י npm install)
+node_modules/
+/node_modules
+
+# ========================
+# 4. Build & React Frontend Outputs (VITE)
+# ========================
+# קבצי התוצר של הריאקט
+dist/
+dist-ssr/
+build/
+
+# ========================
+# 5. Logs & Debugging
+# ========================
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ========================
+# 6. OS & Editor Clutter
+# ========================
+# קבצי מערכת והגדרות של עורך הקוד
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
