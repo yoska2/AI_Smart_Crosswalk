@@ -1,14 +1,51 @@
-import Alert from '../models/Alert.js';
+/*
+========================================
 
-// Logic to save a new alert to DB
-export const createAlert = async (alertData) => {
-    const newAlert = new Alert(alertData);
-    return await newAlert.save();
+Service responsible for alert operations.
+
+Handles alert creation, retrieval,
+and alert-related business logic.
+========================================
+*/
+
+import Alert from "../models/alert.js";
+
+// Create a new alert
+export const createAlert = async (req, res) => {
+
+    try {
+
+        // TODO: Implement alert creation logic
+
+        return res.status(201).json({
+            message: "Alert created successfully"
+        });
+
+    } catch (error) {
+
+        return res.status(500).json({
+            message: error.message
+        });
+
+    }
+
 };
 
-// Logic to fetch all alerts with populated references
-export const fetchAllAlerts = async () => {
-    return await Alert.find()
-        .populate('crosswalkId')
-        .populate('deviceId');
+// Get all alerts
+export const getAlerts = async (req, res) => {
+
+    try {
+
+        // TODO: Implement alert retrieval logic
+
+        return res.status(200).json([]);
+
+    } catch (error) {
+
+        return res.status(500).json({
+            message: error.message
+        });
+
+    }
+
 };

@@ -1,84 +1,70 @@
-// מטרת פונקציית הביניים הזאת היא לבדוק האם המשתמש מחובר למערכת
-// הפונקציה מקבלת את הטוקן שנשלח מהלקוח ובודקת האם הטוקן תקין
-// ואם הכל תקין היא שומרת את פרטי המשתמש בתוך הבקשה
+/*
+========================================
+Middleware responsible for user authentication
+using JWT.
 
+The middleware validates the token received
+from the client, extracts the user information,
+and attaches it to the request object.
+
+If the token is valid, the request proceeds
+to the next step. Otherwise, an unauthorized
+response is returned.
+========================================
+*/
 
 import jwt from "jsonwebtoken";
 
-
-
-// פונקציית הביניים לבדיקת התחברות משתמש
 const authMiddleware = (req, res, next) => {
 
     try {
 
-        // קבלת המידע שנשלח בכותרת הבקשה
+        // Get the authorization header
         const authHeader = req.headers.authorization;
 
-
-
-        // בדיקה האם בכלל נשלח טוקן
+        // Check if a token was provided
         if (!authHeader) {
 
             return res.status(401).json({
-                message: "אין טוקן גישה"
+                message: "Access token is required"
             });
 
         }
 
-
-
-        // פיצול הטקסט לפי רווח
-        // החלק הראשון הוא סוג ההתחברות
-        // החלק השני הוא הטוקן עצמו
+        // Extract the token from:
+        // Bearer <token>
         const token = authHeader.split(" ")[1];
 
-
-
-        // בדיקה האם באמת קיים טוקן
+        // Validate token existence
         if (!token) {
 
             return res.status(401).json({
-                message: "טוקן לא תקין"
+                message: "Invalid token"
             });
 
         }
 
-
-
-        // בדיקת תקינות הטוקן
-        // המערכת בודקת
-        // האם הטוקן אמיתי
-        // האם לא שינו אותו
-        // האם לא פג התוקף שלו
+        // Verify token authenticity and expiration
         const decoded = jwt.verify(
             token,
             process.env.JWT_SECRET
         );
 
-
-
-        // שמירת פרטי המשתמש בתוך הבקשה
+        // Store user information in the request object
         req.user = decoded;
 
-
-
-        // מעבר לשלב הבא בשרת
+        // Continue to the next middleware or route
         next();
 
     } catch (error) {
 
-
-
-        // אם הטוקן לא תקין
+        // Return unauthorized response if token is invalid
         return res.status(401).json({
-            message: "טוקן לא תקין או שפג תוקפו"
+            message: "Token is invalid or expired"
         });
 
     }
 
 };
 
-
-// ייצוא פונקציית הביניים
 export default authMiddleware;
