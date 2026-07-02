@@ -1,0 +1,38 @@
+[
+  {
+    "_id": "CW-882",
+    "location": "צומת הופיין / גולומב",
+    "areaid": "AREA-HLN-C",
+    "areaname": "חולון מרכז",
+    "status": "active",
+    "camerasInstalled": 4,
+    "lastMaintenance": "2026-05-10"
+  },
+  {
+    "_id": "CW-105",
+    "location": "סוקולוב / קראוזה",
+    "areaid": "AREA-HLN-C",
+    "areaname": "חולון מרכז",
+    "status": "active",
+    "camerasInstalled": 2,
+    "lastMaintenance": "2026-06-01"
+  },
+  {
+    "_id": "CW-443",
+    "location": "קמפוס HIT - שער ראשי",
+    "areaid": "AREA-HLN-E",
+    "areaname": "חולון מזרח",
+    "status": "warning",
+    "camerasInstalled": 3,
+    "lastMaintenance": "2026-04-20"
+  },
+  {
+    "_id": "CW-901",
+    "location": "כיכר קוגל / מקווה ישראל",
+    "areaid": "AREA-HLN-N",
+    "areaname": "חולון צפון",
+    "status": "inactive",
+    "camerasInstalled": 0,
+    "lastMaintenance": "2025-12-15"
+  }
+]
