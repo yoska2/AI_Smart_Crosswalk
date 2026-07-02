@@ -6,6 +6,8 @@
     "areaname": "חולון מרכז",
     "status": "active",
     "camerasInstalled": 4,
+    "cameraStatus": "online",
+    "ledStatus": "online",
     "lastMaintenance": "2026-05-10"
   },
   {
@@ -15,6 +17,8 @@
     "areaname": "חולון מרכז",
     "status": "active",
     "camerasInstalled": 2,
+    "cameraStatus": "online",
+    "ledStatus": "offline",
     "lastMaintenance": "2026-06-01"
   },
   {
@@ -24,6 +28,8 @@
     "areaname": "חולון מזרח",
     "status": "warning",
     "camerasInstalled": 3,
+    "cameraStatus": "offline",
+    "ledStatus": "online",
     "lastMaintenance": "2026-04-20"
   },
   {
@@ -33,6 +39,8 @@
     "areaname": "חולון צפון",
     "status": "inactive",
     "camerasInstalled": 0,
+    "cameraStatus": "offline",
+    "ledStatus": "offline",
     "lastMaintenance": "2025-12-15"
   }
 ]
