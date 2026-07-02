@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-// ייבוא קובץ הנתונים (ה-DB הזמני שלנו)
 import crosswalksData from '../data/crosswalks.json';
 
 function DispatcherDashboard() {
   const navigate = useNavigate();
+
+  // סטייט לחיפוש וסינון
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterDate, setFilterDate] = useState('');
 
   const [alerts, setAlerts] = useState([
     { 
@@ -45,14 +48,13 @@ function DispatcherDashboard() {
       severity: 'low',
       description: 'עומס חריג של הולכי רגל', 
       imageUrl: 'https://via.placeholder.com/600x400?text=Crowd+Snapshot',
-      timestamp: '2026-06-05T19:42:15Z',
+      timestamp: '2026-06-04T14:42:15Z',
       status: 'resolved',
       note: 'העומס השתחרר, תקין'
     },
   ]);
 
   const handleLogout = () => {
-    // מחיקת הטוקן מהזיכרון בעת התנתקות
     localStorage.removeItem('token');
     navigate('/');
   };
@@ -69,6 +71,20 @@ function DispatcherDashboard() {
     ));
   };
 
+  // סינון הצמתים לפי שורת החיפוש
+  const filteredCrosswalks = crosswalksData.filter(cw => 
+    cw.location.includes(searchTerm) || 
+    cw.areaname.includes(searchTerm) ||
+    cw._id.includes(searchTerm)
+  );
+
+  // סינון ההתרעות לפי התאריך שנבחר
+  const filteredAlerts = alerts.filter(alert => {
+    if (!filterDate) return true;
+    const alertDate = alert.timestamp.split('T')[0];
+    return alertDate === filterDate;
+  });
+
   const getStatusStyle = (status) => {
     if (status === 'pending') return 'bg-red-100 text-red-800 border-red-300';
     if (status === 'in-progress') return 'bg-yellow-100 text-yellow-800 border-yellow-300';
@@ -82,7 +98,6 @@ function DispatcherDashboard() {
     return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold text-xs border border-blue-200">🔵 נמוך</span>;
   };
 
-  // פונקציית עזר לעיצוב הסטטוס של הצמתים מה-JSON
   const getCrosswalkStatusBadge = (status) => {
     if (status === 'active') return <span className="text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200 text-xs font-bold">פעיל</span>;
     if (status === 'warning') return <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-200 text-xs font-bold">תקלה חלקית</span>;
@@ -92,6 +107,11 @@ function DispatcherDashboard() {
   const formatTime = (isoString) => {
     const date = new Date(isoString);
     return date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const formatDateDisplay = (isoString) => {
+    const date = new Date(isoString);
+    return date.toLocaleDateString('he-IL');
   };
 
   return (
@@ -142,10 +162,8 @@ function DispatcherDashboard() {
 
         <div className="flex flex-col gap-6 flex-1 overflow-hidden">
             
-          {/* אזור עליון מפוצל: מפה (ימין) + רשימת צמתים מה-JSON (שמאל) */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 shrink-0 h-72">
               
-              {/* מפה - תופסת 2 מתוך 3 עמודות */}
               <div className="lg:col-span-2 bg-white rounded-xl shadow-md border border-slate-200 flex flex-col h-full">
                 <div className="bg-slate-50 p-3 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center">
                     <span className="flex items-center gap-2">📍 מפת צמתים</span>
@@ -158,47 +176,94 @@ function DispatcherDashboard() {
                 </div>
               </div>
 
-              {/* רשימת צמתים מתוך מסד הנתונים (JSON) - תופסת עמודה 1 */}
+              {/* אזור רשימת הצמתים - לחיץ ומנווט */}
               <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col h-full">
-                <div className="bg-slate-50 p-3 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center">
-                    <span className="flex items-center gap-2">🚦 פריסת צמתים (DB)</span>
-                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">{crosswalksData.length} מנוטרים</span>
+                <div className="bg-slate-50 p-3 border-b border-slate-200 flex flex-col gap-3 shrink-0">
+                    <div className="flex justify-between items-center font-bold text-slate-700">
+                        <span className="flex items-center gap-2">🚦 פריסת צמתים (DB)</span>
+                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">{filteredCrosswalks.length} תוצאות</span>
+                    </div>
+                    {/* שורת חיפוש */}
+                    <input 
+                      type="text" 
+                      placeholder="חיפוש לפי רחוב, אזור או מזהה..." 
+                      className="w-full p-2 border border-slate-300 rounded text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
                 </div>
-                {/* אזור נגלל לרשימת הצמתים */}
+                
                 <div className="p-3 overflow-y-auto flex-1 flex flex-col gap-3">
-                    {crosswalksData.map((cw) => (
-                        <div key={cw._id} className="p-3 border border-slate-100 rounded-lg shadow-sm hover:shadow-md transition bg-white flex flex-col gap-2">
+                    {filteredCrosswalks.map((cw) => (
+                        <div 
+                            key={cw._id} 
+                            onClick={() => navigate(`/crosswalk/${cw._id}`)}
+                            className="p-3 border border-slate-200 rounded-lg shadow-sm hover:shadow-md transition bg-white flex flex-col gap-2 cursor-pointer hover:border-blue-400 hover:bg-blue-50 group"
+                        >
                             <div className="flex justify-between items-start">
-                                <span className="font-bold text-sm text-slate-800">{cw.location}</span>
+                                <span className="font-bold text-sm text-slate-800 group-hover:text-blue-700">{cw.location}</span>
                                 {getCrosswalkStatusBadge(cw.status)}
                             </div>
                             <div className="flex justify-between items-center text-xs text-slate-500 mt-1">
                                 <span>{cw.areaname}</span>
-                                <span className="bg-slate-100 px-2 py-1 rounded flex items-center gap-1">
-                                    📷 {cw.camerasInstalled} מצלמות
+                                <span className="bg-slate-100 px-2 py-1 rounded flex items-center gap-1 font-mono">
+                                    {cw._id}
+                                </span>
+                            </div>
+                            <div className="border-t border-slate-100 pt-2 mt-1 flex justify-between items-center text-xs font-medium">
+                                <div className="flex gap-3">
+                                    <span className={`flex items-center gap-1 ${cw.cameraStatus === 'online' ? 'text-green-600' : 'text-red-500'}`}>
+                                        {cw.cameraStatus === 'online' ? '🟢' : '🔴'} מצלמות
+                                    </span>
+                                    <span className={`flex items-center gap-1 ${cw.ledStatus === 'online' ? 'text-green-600' : 'text-red-500'}`}>
+                                        {cw.ledStatus === 'online' ? '🟢' : '🔴'} לדים
+                                    </span>
+                                </div>
+                                <span className="text-blue-600 font-bold opacity-0 group-hover:opacity-100 transition">
+                                    לפרטים ➔
                                 </span>
                             </div>
                         </div>
                     ))}
+                    {filteredCrosswalks.length === 0 && (
+                        <div className="text-center text-slate-500 text-sm mt-4">לא נמצאו צמתים התואמים לחיפוש.</div>
+                    )}
                 </div>
               </div>
 
           </div>
 
-          {/* טבלת התרעות - חלק תחתון */}
           <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col flex-1 overflow-hidden">
              <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center shrink-0">
                 <span>⚠️ טבלת התרעות מהשטח</span>
-                <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                  {alerts.filter(a => a.status === 'pending').length} ממתינות לטיפול
-                </span>
+                
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 text-sm font-normal">
+                        <label htmlFor="dateFilter" className="text-slate-600">סנן לפי תאריך:</label>
+                        <input 
+                            type="date" 
+                            id="dateFilter"
+                            value={filterDate}
+                            onChange={(e) => setFilterDate(e.target.value)}
+                            className="border border-slate-300 rounded px-2 py-1 outline-none focus:border-blue-500"
+                        />
+                        {filterDate && (
+                            <button onClick={() => setFilterDate('')} className="text-red-500 text-xs hover:underline">
+                                נקה
+                            </button>
+                        )}
+                    </div>
+                    <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                      {filteredAlerts.filter(a => a.status === 'pending').length} ממתינות
+                    </span>
+                </div>
             </div>
             
             <div className="overflow-x-auto overflow-y-auto flex-1">
                 <table className="w-full text-right border-collapse">
                     <thead className="bg-white sticky top-0 border-b-2 border-slate-200 shadow-sm z-10">
                         <tr className="text-slate-500 text-sm">
-                            <th className="p-4 font-bold whitespace-nowrap">שעה</th>
+                            <th className="p-4 font-bold whitespace-nowrap">תאריך ושעה</th>
                             <th className="p-4 font-bold whitespace-nowrap">חומרה</th>
                             <th className="p-4 font-bold whitespace-nowrap">תיאור אירוע</th>
                             <th className="p-4 font-bold whitespace-nowrap">מיקום (מאקרו ומיקרו)</th>
@@ -209,9 +274,12 @@ function DispatcherDashboard() {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                        {alerts.map((alert) => (
+                        {filteredAlerts.map((alert) => (
                             <tr key={alert._id} className="hover:bg-slate-50 transition">
-                                <td className="p-4 font-mono text-slate-600 whitespace-nowrap">{formatTime(alert.timestamp)}</td>
+                                <td className="p-4 font-mono text-slate-600 whitespace-nowrap text-sm">
+                                    <div>{formatDateDisplay(alert.timestamp)}</div>
+                                    <div className="text-slate-400">{formatTime(alert.timestamp)}</div>
+                                </td>
                                 <td className="p-4 whitespace-nowrap">{getSeverityBadge(alert.severity)}</td>
                                 <td className="p-4 font-bold text-slate-800">{alert.description}</td>
                                 <td className="p-4 whitespace-nowrap">
@@ -255,6 +323,11 @@ function DispatcherDashboard() {
                                 </td>
                             </tr>
                         ))}
+                        {filteredAlerts.length === 0 && (
+                            <tr>
+                                <td colSpan="8" className="p-8 text-center text-slate-500">לא נמצאו אירועים לתאריך הנבחר.</td>
+                            </tr>
+                        )}
                     </tbody>
                 </table>
             </div>

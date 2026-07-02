@@ -1,19 +1,23 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
-import ManagerDashboard from './pages/ManagerDashboard';
 import DispatcherDashboard from './pages/DispatcherDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import ManagerDashboard from './pages/ManagerDashboard';
 import TechnicianDashboard from './pages/TechnicianDashboard';
-import AdminDashboard from './pages/AdminDashboard'; // ייבוא המסך החדש
+import CrosswalkDetails from './pages/CrosswalkDetails'; // הייבוא החדש שלנו!
 
 function App() {
   return (
     <Router>
       <Routes>
         <Route path="/" element={<Login />} />
-        <Route path="/admin" element={<AdminDashboard />} /> {/* נתיב אדמין */}
-        <Route path="/manager" element={<ManagerDashboard />} />
         <Route path="/dispatcher" element={<DispatcherDashboard />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/manager" element={<ManagerDashboard />} />
         <Route path="/technician" element={<TechnicianDashboard />} />
+        
+        {/* הנתיב החדש: ה-id משתנה דינמית לפי הצומת שלוחצים עליו */}
+        <Route path="/crosswalk/:id" element={<CrosswalkDetails />} />
       </Routes>
     </Router>
   );
