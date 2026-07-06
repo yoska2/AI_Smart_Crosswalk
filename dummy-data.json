@@ -1,0 +1,55 @@
+{
+  "crosswalks": [
+    {
+      "_id": "cw_001",
+      "areaId": "area_holon_01",
+      "areaName": "מרכז העיר",
+      "location": "הרצל 45, חולון",
+      "city": "חולון",
+      "ledCommandUrl": "http://api.smartcity.com/leds/activate/cw_001",
+      "isActive": true,
+      "cameras": [
+        "cam_101",
+        "cam_102"
+      ]
+    },
+    {
+      "_id": "cw_002",
+      "areaId": "area_tlv_03",
+      "areaName": "צפון תל אביב",
+      "location": "אבן גבירול 10, תל אביב",
+      "city": "תל אביב",
+      "ledCommandUrl": "http://api.smartcity.com/leds/activate/cw_002",
+      "isActive": true,
+      "cameras": [
+        "cam_201"
+      ]
+    }
+  ],
+  "alerts": [
+    {
+      "_id": "alert_001",
+      "cameraId": "cam_101",
+      "crosswalkId": "cw_001",
+      "location": "הרצל 45, חולון",
+      "areaId": "area_holon_01",
+      "areaName": "מרכז העיר",
+      "severity": "High",
+      "description": "הולך רגל זוהה על הכביש באור אדום",
+      "imageUrl": "https://dummyimage.com/600x400/000/fff&text=Pedestrian+Danger",
+      "timestamp": "2026-06-03T08:30:00Z"
+    },
+    {
+      "_id": "alert_002",
+      "cameraId": "cam_201",
+      "crosswalkId": "cw_002",
+      "location": "אבן גבירול 10, תל אביב",
+      "areaId": "area_tlv_03",
+      "areaName": "צפון תל אביב",
+      "severity": "Medium",
+      "description": "רכב נעצר על קו מעבר החצייה",
+      "imageUrl": "https://dummyimage.com/600x400/000/fff&text=Car+on+Crosswalk",
+      "timestamp": "2026-06-03T11:15:00Z"
+    }
+  ]
+}
