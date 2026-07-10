@@ -3,7 +3,7 @@
 Service responsible for handling detection requests.
 
 Reads an image path from the incoming request and forwards
-it to the already-running YOLOv8 Python process via yoloService.
+it to the already running YOLOv8 Python process **via** yoloService.
 ========================================
 */
 

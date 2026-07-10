@@ -16,8 +16,8 @@ import cp from "child_process";
 import path from "path";
 import url from "url";
 
-// __dirname doesn't exist in ES modules, so it's rebuilt manually here.
-const __filename = url.fileURLToPath(import.meta.url);
+// convert (current) file URL to path for __dirname
+const __filename = url.fileURLToPath(import.meta.url); 
 const __dirname = path.dirname(__filename);
 
 // Absolute path to the python script, so spawn works no matter what
@@ -41,98 +41,135 @@ let stdoutBuffer = "";
 // oldest pending entry always matches the next line that arrives.
 const pendingRequests = [];
 
+
+
+
 /*
 ========================================
-Starts the persistent Python process.
-Must be called once when the server boots, not per request.
+ This function creates and starts the Python process,
+  which loads the YOLOv8 model into memory.
+
+ It is called only once when the Node.js server starts (index.js).
+ After the thread finishes, it does not continue running itself,
+ but it registers (listeners) that remain active for the entire duration of the server. 
+ These listeners continuously listen for any answer***, error, or termination events
+  that come from the Python process.
 ========================================
 */
-const startYoloService = () => {
+const YoloService = () => {
 
+    // Start the Python process and keep it running.
     pythonProcess = cp.spawn(pythonExecutable, [scriptPath]);
 
-    // Each stdout "data" event can contain a partial line, one full line, or several lines.
+    // Listen for results coming back from Python.
     pythonProcess.stdout.on("data", (chunk) => {
 
+        // Add the new data to the buffer.
         stdoutBuffer += chunk.toString();
 
-        // Split into complete lines; the last piece may be an unfinished line,
-        // so it's kept in the buffer instead of being processed.
+        // Split the buffer into complete lines.
         const lines = stdoutBuffer.split("\n");
+
+        // Save the last incomplete line for the next event.
         stdoutBuffer = lines.pop();
 
+        // Process every complete JSON line returned by Python.
         for (const line of lines) {
 
+            // Ignore empty lines.
             if (!line.trim()) continue;
 
-            // The oldest pending request corresponds to this line.
+            // Get the oldest request waiting for a response.
             const pending = pendingRequests.shift();
 
+            // If no request is waiting, ignore this line.
             if (!pending) continue;
 
             try {
 
+                // Convert the JSON string into a JavaScript object.
                 const result = JSON.parse(line);
 
+                // If Python returned an error, reject the Promise.
                 if (result.error) {
                     pending.reject(new Error(result.error));
                 } else {
+                    // Otherwise, return the detection result.
                     pending.resolve(result);
                 }
 
             } catch (error) {
+
+                // Reject the Promise if the JSON is invalid.
                 pending.reject(error);
+
             }
 
         }
 
     });
 
-    // Python-side errors (stack traces, missing model file, etc.) show up here
-    // instead of silently disappearing.
+    // Listen for Python error messages and print them.
     pythonProcess.stderr.on("data", (chunk) => {
         console.error(`[yoloService] ${chunk.toString()}`);
     });
 
-    // If the process dies, reject everything still waiting so callers don't hang forever.
+    // Handle the case where the Python process stops running.
     pythonProcess.on("exit", (code) => {
 
         console.error(`[yoloService] Python process exited with code ${code}`);
 
+        // Reject all requests that are still waiting for a response.
         while (pendingRequests.length) {
+
             const pending = pendingRequests.shift();
-            pending.reject(new Error("YOLO python process exited unexpectedly"));
+
+            pending.reject(
+                new Error("YOLO python process exited unexpectedly")
+            );
+
         }
 
+        // Mark that there is no active Python process.
         pythonProcess = null;
 
     });
 
 };
 
+
+
 /*
 ========================================
-Sends an image path to the already-running Python process
-and resolves with the parsed detections once they arrive.
+Sends an image path to the running Python process.
+Returns a Promise with the detection results.
 ========================================
 */
 const detect = (imagePath) => {
 
+    // Create a Promise because Python needs time to process the image.
     return new Promise((resolve, reject) => {
 
+        // Check that the Python process is running.
         if (!pythonProcess) {
             return reject(new Error("YOLO python process is not running"));
         }
 
-        // Queued before writing, so the stdout handler above has somewhere
-        // to deliver the result the moment the response line arrives.
-        pendingRequests.push({ resolve: resolve, reject: reject });
+        // Save this request so we can return the correct result
+        // when Python finishes processing.
+        pendingRequests.push({
+            resolve: resolve,
+            reject: reject
+        });
 
-        // Writing one line to stdin triggers exactly one detection cycle in detect.py.
+        // Send the image path to Python.
+        // This starts one detection in detect.py.
         pythonProcess.stdin.write(imagePath + "\n");
 
     });
 
 };
 
-export default { startYoloService: startYoloService, detect: detect };
+// Export the functions so other files can use them 
+
+export default { startYoloService: YoloService, detect: detect };
