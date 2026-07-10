@@ -9,15 +9,12 @@ token before accessing alert data.
 
 import express from "express";
 import authMiddleware from "../middleware/authMiddleware.js";
-import {
-    createAlert,
-    getAlerts
-} from "../services/alertService.js";
+import alertService from "../services/alertService.js";
 
 const router = express.Router();
 
-router.post("/", authMiddleware, createAlert);
+router.post("/", authMiddleware, alertService.createAlert);
 
-router.get("/", authMiddleware, getAlerts);
+router.get("/", authMiddleware, alertService.getAlerts);
 
 export default router;

@@ -11,7 +11,7 @@ crosswalk-related business logic.
 import Crosswalk from "../models/Crosswalk.js";
 
 // Get all crosswalks
-export const getAllCrosswalks = async (req, res) => {
+const getAllCrosswalks = async (req, res) => {
 
     try {
 
@@ -28,3 +28,5 @@ export const getAllCrosswalks = async (req, res) => {
     }
 
 };
+
+export default { getAllCrosswalks: getAllCrosswalks };

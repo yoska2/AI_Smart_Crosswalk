@@ -11,7 +11,7 @@ and alert-related business logic.
 import Alert from "../models/alert.js";
 
 // Create a new alert
-export const createAlert = async (req, res) => {
+const createAlert = async (req, res) => {
 
     try {
 
@@ -32,7 +32,7 @@ export const createAlert = async (req, res) => {
 };
 
 // Get all alerts
-export const getAlerts = async (req, res) => {
+const getAlerts = async (req, res) => {
 
     try {
 
@@ -49,3 +49,4 @@ export const getAlerts = async (req, res) => {
     }
 
 };
+export default { createAlert: createAlert, getAlerts: getAlerts };

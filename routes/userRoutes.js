@@ -10,17 +10,14 @@ This file handles:
 */
 
 import express from "express";
-import {
-    login,
-    register
-} from "../services/userService.js";
+import userService from "../services/userService.js";
 
 const router = express.Router();
 
 // User registration
-router.post("/register", register);
+router.post("/register", userService.register);
 
 // User login
-router.post("/login", login);
+router.post("/login", userService.login);
 
 export default router;

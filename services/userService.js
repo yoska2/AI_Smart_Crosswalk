@@ -24,20 +24,18 @@ import User from "../models/user.js";
 User Registration
 ========================================
 */
-export const register = async (req, res) => {
+const register = async (req, res) => {
 
     try {
 
         // Extract user information
-        const {
-            username,
-            email,
-            password
-        } = req.body;
+        const username = req.body.username;
+        const email = req.body.email;
+        const password = req.body.password;
 
         // Check if user already exists
         const existingUser = await User.findOne({
-            email
+            email: email
         });
 
         if (existingUser) {
@@ -57,9 +55,9 @@ export const register = async (req, res) => {
         // Create new user
         const user = new User({
             id: crypto.randomUUID(),
-            username,
-            email,
-            passwordHash
+            username: username,
+            email: email,
+            passwordHash: passwordHash
         });
 
         // Save user
@@ -86,16 +84,17 @@ export const register = async (req, res) => {
 User Login
 ========================================
 */
-export const login = async (req, res) => {
+const login = async (req, res) => {
 
     try {
 
         // Extract credentials
-        const { email, password } = req.body;
+        const email = req.body.email;
+        const password = req.body.password;
 
         // Find user by email
         const user = await User.findOne({
-            email
+            email: email
         });
 
         if (!user) {
@@ -144,3 +143,4 @@ export const login = async (req, res) => {
     }
 
 };
+export default { register: register, login: login };
