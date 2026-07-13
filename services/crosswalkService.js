@@ -1,4 +1,4 @@
-import Crosswalk from '../models/Crosswalk.js';
+import Crosswalk from '../models/crosswalk.js';
 
 // Logic to create a new crosswalk
 export const createCrosswalk = async (crosswalkData) => {

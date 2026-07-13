@@ -26,6 +26,15 @@
       ]
     }
   ],
+  "cameras": [
+    { "id": "cam_101", "crosswalkId": "cw_001", "status": "Active", "lastUpdated": "2026-07-13T08:00:00Z" },
+    { "id": "cam_102", "crosswalkId": "cw_001", "status": "Inactive", "lastUpdated": "2026-07-13T08:00:00Z" },
+    { "id": "cam_201", "crosswalkId": "cw_002", "status": "Active", "lastUpdated": "2026-07-13T08:00:00Z" }
+  ],
+  "leds": [
+    { "id": "led_101", "crosswalkId": "cw_001", "status": "On", "lastUpdated": "2026-07-13T08:00:00Z" },
+    { "id": "led_201", "crosswalkId": "cw_002", "status": "Off", "lastUpdated": "2026-07-13T08:00:00Z" }
+  ],
   "alerts": [
     {
       "_id": "alert_001",

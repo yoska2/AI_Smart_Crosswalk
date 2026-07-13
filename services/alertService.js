@@ -1,4 +1,4 @@
-import Alert from '../models/Alert.js';
+import Alert from '../models/alert.js';
 
 // Logic to save a new alert to DB
 export const createAlert = async (alertData) => {
@@ -6,9 +6,7 @@ export const createAlert = async (alertData) => {
     return await newAlert.save();
 };
 
-// Logic to fetch all alerts with populated references
+// Logic to fetch all alerts
 export const fetchAllAlerts = async () => {
-    return await Alert.find()
-        .populate('crosswalkId')
-        .populate('deviceId');
+    return await Alert.find().sort({ timestamp: -1 });
 };

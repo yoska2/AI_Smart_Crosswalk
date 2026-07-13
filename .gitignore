@@ -1,27 +1,23 @@
 # ========================
 # 1. Security & Sensitive Info
 # ========================
-# קובץ חובה להסתרת מידע רגיש כמו כתובת ה-DB
 .env
 
 # ========================
 # 2. Custom Project Folders
 # ========================
-# תיקיית הספרינטים שביקשת לחסום
 sprints/
 /sprints
 
 # ========================
 # 3. Dependencies
 # ========================
-# תיקיית הספריות (כבדה מאוד ונוצרת אוטומטית ע"י npm install)
 node_modules/
 /node_modules
 
 # ========================
 # 4. Build & React Frontend Outputs (VITE)
 # ========================
-# קבצי התוצר של הריאקט
 dist/
 dist-ssr/
 build/
@@ -35,9 +31,19 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # ========================
-# 6. OS & Editor Clutter
+# 6. Python Vision "Brain" (Sprint 3)
 # ========================
-# קבצי מערכת והגדרות של עורך הקוד
+vision/venv/
+venv/
+__pycache__/
+*.pyc
+*.pt          # YOLO model weights (auto-downloaded)
+vision/videos/  # large local test clips (not committed)
+*.mp4
+
+# ========================
+# 7. OS & Editor Clutter
+# ========================
 .DS_Store
 Thumbs.db
 .vscode/
