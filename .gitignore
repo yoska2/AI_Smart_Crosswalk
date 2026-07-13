@@ -38,7 +38,7 @@ venv/
 __pycache__/
 *.pyc
 *.pt          # YOLO model weights (auto-downloaded)
-vision/videos/  # large local test clips (not committed)
+vision/dummy-dataset/  # large local test clips/images (not committed)
 *.mp4
 
 # ========================
