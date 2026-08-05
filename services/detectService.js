@@ -1,13 +1,18 @@
 /*
 ========================================
-Service responsible for handling detection requests.
+Service responsible for handling
+object detection requests.
 
-Reads an image path from the incoming request and forwards
-it to the already running YOLOv8 Python process **via** yoloService.
+Receives an image path, forwards it
+to the AI REST service, and returns
+the detection results.
 ========================================
 */
 
-import yoloService from "./yoloService.js";
+import axios from "axios";
+
+// Base URL of the Python FastAPI detection service.
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL;
 
 const detectObjects = async (req, res) => {
 
@@ -23,15 +28,21 @@ const detectObjects = async (req, res) => {
             });
         }
 
-        // Reuses the single long-lived Python process instead of starting a new one.
-        const computedResults = await yoloService.detect(imagePath);
+        // Forward the image path to the FastAPI detection service.
+        const response = await axios.post(`${AI_SERVICE_URL}/detect`, {
+            imagePath: imagePath
+        });
 
-        return res.status(200).json(computedResults);
+        return res.status(200).json(response.data);
 
     } catch (error) {
 
-        return res.status(500).json({
-            message: error.message
+        // If the AI service responded with an error, reuse its status and message.
+        const status = error.response ? error.response.status : 500;
+        const message = error.response ? error.response.data.detail : error.message;
+
+        return res.status(status).json({
+            message: message
         });
 
     }

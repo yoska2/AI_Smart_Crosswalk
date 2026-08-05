@@ -17,9 +17,6 @@ import dotenv from "dotenv";
 // Database configuration
 import connectDB from "./config/db.js";
 
-// YOLOv8 detection service (spawns the long-lived Python process)
-import yoloService from "./services/yoloService.js";
-
 // Routes
 import alertRoutes from "./routes/alertRoutes.js";
 import crosswalkRoutes from "./routes/crosswalkRoutes.js";
@@ -34,10 +31,6 @@ const app = express();
 
 // Connect to MongoDB
 connectDB();
-
-// Start the persistent Python process once, at server boot,
-// instead of spawning it again on every /detect request.
-yoloService.startYoloService();
 
 // Parse incoming JSON requests
 app.use(express.json());
