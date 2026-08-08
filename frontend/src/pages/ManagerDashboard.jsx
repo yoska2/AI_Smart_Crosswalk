@@ -5,7 +5,6 @@ import crosswalksData from '../data/crosswalks.json';
 function ManagerDashboard() {
   const navigate = useNavigate();
 
-  // נתוני דמה של המוקדנים במשמרת נוכחית - הוספנו זמן תגובה ממוצע!
   const [dispatchersLoad] = useState([
     { id: 1, name: 'דניאל כהן', pending: 8, inProgress: 2, maxCapacity: 15, avgResponseTime: '2m 15s' },
     { id: 2, name: 'רונית לוי', pending: 2, inProgress: 4, maxCapacity: 15, avgResponseTime: '1m 05s' },
@@ -83,7 +82,7 @@ function ManagerDashboard() {
                   <div className="text-3xl font-black text-slate-800">{totalCrosswalks}</div>
               </div>
               <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 border-r-4 border-r-red-500">
-                  <div className="text-slate-500 text-sm font-bold mb-1">התרעות קריטיות (היום)</div>
+                  <div className="text-slate-500 text-sm font-bold mb-1">אירועים קריטיים (היום)</div>
                   <div className="text-3xl font-black text-slate-800">14</div>
               </div>
               <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 border-r-4 border-r-yellow-500">
@@ -131,25 +130,25 @@ function ManagerDashboard() {
                   </div>
               </div>
 
-              {/* התפלגות התרעות חודשית */}
+              {/* התפלגות התרעות חודשית - מעודכן לעיר חכמה */}
               <div className="bg-white rounded-xl shadow-md border border-slate-200 p-5 flex flex-col">
-                  <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">📊 חומרת עבירות (יוני 2026)</h3>
+                  <h3 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">📊 סיווג אירועים (עומסים ותשתיות)</h3>
                   
                   <div className="flex flex-col gap-4 justify-center flex-1">
                       <div className="flex items-center gap-3">
-                          <span className="w-16 text-sm font-bold text-slate-600">קריטי</span>
+                          <span className="w-32 text-sm font-bold text-slate-600">קריטי (עומס כבד)</span>
                           <div className="flex-1 bg-slate-100 rounded-r-md h-6 overflow-hidden flex">
                               <div className="bg-red-500 h-full w-[45%] text-xs text-white flex items-center px-2">124 מקרים</div>
                           </div>
                       </div>
                       <div className="flex items-center gap-3">
-                          <span className="w-16 text-sm font-bold text-slate-600">בינוני</span>
+                          <span className="w-32 text-sm font-bold text-slate-600">בינוני (מכשולים)</span>
                           <div className="flex-1 bg-slate-100 rounded-r-md h-6 overflow-hidden flex">
                               <div className="bg-orange-400 h-full w-[35%] text-xs text-white flex items-center px-2">95 מקרים</div>
                           </div>
                       </div>
                       <div className="flex items-center gap-3">
-                          <span className="w-16 text-sm font-bold text-slate-600">נמוך</span>
+                          <span className="w-32 text-sm font-bold text-slate-600">נמוך (תקלות תשתית)</span>
                           <div className="flex-1 bg-slate-100 rounded-r-md h-6 overflow-hidden flex">
                               <div className="bg-blue-400 h-full w-[20%] text-xs text-white flex items-center px-2">42 מקרים</div>
                           </div>
@@ -162,7 +161,7 @@ function ManagerDashboard() {
           {/* טבלת צמתים מרכזית בראייה אזורית */}
           <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col">
               <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center rounded-t-xl">
-                  <span>📍 בקרת צמתים אזורית</span>
+                  <span>📍 בקרת תקינות רשת הצמתים</span>
               </div>
               
               <div className="overflow-x-auto">
@@ -172,7 +171,7 @@ function ManagerDashboard() {
                               <th className="p-4 font-bold">מזהה ושם צומת</th>
                               <th className="p-4 font-bold">אזור (Area)</th>
                               <th className="p-4 font-bold">תשתיות עובדות</th>
-                              <th className="p-4 font-bold">רמת מסוכנות (סטטוס)</th>
+                              <th className="p-4 font-bold">סטטוס תפעולי</th>
                               <th className="p-4 font-bold">פעולות ניהול</th>
                           </tr>
                       </thead>
