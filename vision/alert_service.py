@@ -24,7 +24,7 @@ class AlertService:
         # A reusable Session pools the TCP connection across many alerts.
         self._session = requests.Session()
 
-    # --- Lifecycle --------------------------------------------------------
+    #  Lifecycle 
     def start(self) -> None:
         """Spin up the daemon worker thread."""
         if self._worker and self._worker.is_alive():
@@ -46,7 +46,7 @@ class AlertService:
         self._session.close()
         print("[INFO] AlertService stopped.")
 
-    # --- Public API -------------------------------------------------------
+    #  Public API 
     def send(self, event: DangerEvent) -> None:
         """
         Enqueue an alert for asynchronous delivery. Returns immediately.
@@ -60,7 +60,7 @@ class AlertService:
         except queue.Full:
             print("[WARN] Alert queue full - dropping alert (backend slow/down?).")
 
-    # --- Internals --------------------------------------------------------
+    #  Internals
     @staticmethod
     def _build_payload(event: DangerEvent) -> dict:
         """Map a DangerEvent onto the backend's expected JSON schema."""

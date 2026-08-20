@@ -50,3 +50,9 @@ Thumbs.db
 .idea/
 .claude/
 /.claude
+# ========================
+# 8. Sprint 4 / misc (temp, notes, debug)
+# ========================
+err.txt
+*.log
+SPRINT4_design_decisions.md   # personal design notes (keep out of shared repo)
