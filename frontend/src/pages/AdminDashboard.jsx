@@ -4,7 +4,6 @@ import { useNavigate } from 'react-router-dom';
 function AdminDashboard() {
   const navigate = useNavigate();
 
-  // נתוני דמה של משתמשי המערכת
   const [users, setUsers] = useState([
     { id: 'U-001', name: 'ישראל ישראלי', username: 'admin', role: 'Admin', status: 'active', lastLogin: '2026-07-02 08:30' },
     { id: 'U-002', name: 'אבי מנהל', username: 'manager', role: 'Manager', status: 'active', lastLogin: '2026-07-02 09:15' },
@@ -19,14 +18,14 @@ function AdminDashboard() {
     navigate('/');
   };
 
-  // פעולת דמה: מחיקת משתמש
+
   const handleDeleteUser = (id) => {
     if (window.confirm('האם אתה בטוח שברצונך למחוק משתמש זה? פעולה זו בלתי הפיכה.')) {
       setUsers(users.filter(user => user.id !== id));
     }
   };
 
-  // פעולת דמה: השעיה / הפעלה מחדש של משתמש
+  
   const handleToggleStatus = (id) => {
     setUsers(users.map(user => {
       if (user.id === id) {
@@ -49,7 +48,7 @@ function AdminDashboard() {
   return (
     <div className="flex h-screen bg-slate-50 font-sans" dir="rtl">
       
-      {/* תפריט צד - אדמין */}
+     
       <aside className="w-64 bg-slate-900 text-white p-6 flex flex-col justify-between shadow-2xl z-10 shrink-0">
         <div>
           <h1 className="text-2xl font-bold mb-8 text-center border-b border-slate-700 pb-4 text-purple-400">
@@ -84,7 +83,7 @@ function AdminDashboard() {
         </div>
       </aside>
 
-      {/* אזור תוכן מרכזי */}
+     
       <main className="flex-1 p-8 flex flex-col overflow-y-auto">
         
         <header className="mb-8 flex justify-between items-center shrink-0 border-b border-slate-200 pb-6">
@@ -127,7 +126,7 @@ function AdminDashboard() {
               </div>
           </div>
 
-          {/* טבלת ניהול משתמשים */}
+          
           <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col flex-1 overflow-hidden">
               <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center">
                   <span>רשימת הרשאות ומשתמשים</span>

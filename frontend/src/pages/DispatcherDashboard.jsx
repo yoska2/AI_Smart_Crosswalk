@@ -1,28 +1,38 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
 import crosswalksData from '../data/crosswalks.json';
 
 function DispatcherDashboard() {
   const navigate = useNavigate();
 
-  // סטייט לחיפוש וסינון
+  // 1. משתני State חדשים עבור טעינה, שגיאות ותצוגת תמונה (Modal)
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
 
   const [alerts, setAlerts] = useState([
     { 
-      _id: 'alert_001', 
+      _id: 'alert_ai_001', 
       cameraId: 'CAM-NORTH-01',
       crosswalkId: 'CW-882',
       location: 'צומת הופיין / גולומב', 
       areaid: 'AREA-HLN-C',
       areaname: 'חולון מרכז',
       severity: 'high',
-      description: 'הולך רגל התפרץ לכביש באדום', 
-      imageUrl: 'https://via.placeholder.com/600x400?text=Camera+Feed+Snapshot',
+      description: 'התפרצות לכביש באדום', 
       timestamp: '2026-06-05T19:55:00Z',
       status: 'pending',
-      note: ''
+      note: '',
+      aiAnalysis: {
+        imageUrl: 'https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg', 
+        targetType: 'ילד',
+        riskLevel: 95, 
+        distanceFromCrosswalk: '0.5'
+      }
     },
     { 
       _id: 'alert_002', 
@@ -36,7 +46,8 @@ function DispatcherDashboard() {
       imageUrl: '',
       timestamp: '2026-06-05T19:50:30Z',
       status: 'in-progress',
-      note: 'ניידת סיור בדרך למקום'
+      note: 'ניידת סיור בדרך למקום',
+      aiAnalysis: null
     },
     { 
       _id: 'alert_003', 
@@ -47,12 +58,33 @@ function DispatcherDashboard() {
       areaname: 'חולון מזרח',
       severity: 'low',
       description: 'עומס חריג של הולכי רגל', 
-      imageUrl: 'https://via.placeholder.com/600x400?text=Crowd+Snapshot',
+      imageUrl: 'https://images.unsplash.com/photo-1517737812598-1a43d0ef2a52?auto=format&fit=crop&q=80&w=600',
       timestamp: '2026-06-04T14:42:15Z',
       status: 'resolved',
-      note: 'העומס השתחרר, תקין'
+      note: 'העומס השתחרר, תקין',
+      aiAnalysis: null
     },
   ]);
+
+  // 2. סימולציה של טעינת נתונים (Loading Spinner) וחיבור ל-Socket
+  useEffect(() => {
+    // סימולציה: מציגים את הספינר למשך 1.5 שניות לפני שמראים את הנתונים
+    setTimeout(() => {
+      setIsLoading(false);
+      // אם תרצה לבדוק מצב שגיאה, תוכל להוריד את ההערה מהשורה הבאה:
+      // setError('שגיאת תקשורת: השרת לא מגיב');
+    }, 1500);
+
+    // חיבור לשרת ה-Backend
+    const socket = io('http://localhost:5000'); 
+
+    socket.on('new-ai-alert', (newAlertData) => {
+      console.log('🚨 התקבלה התרעה חדשה מה-AI:', newAlertData);
+      setAlerts((prevAlerts) => [newAlertData, ...prevAlerts]);
+    });
+
+    return () => socket.disconnect();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -71,14 +103,12 @@ function DispatcherDashboard() {
     ));
   };
 
-  // סינון הצמתים לפי שורת החיפוש
   const filteredCrosswalks = crosswalksData.filter(cw => 
     cw.location.includes(searchTerm) || 
     cw.areaname.includes(searchTerm) ||
     cw._id.includes(searchTerm)
   );
 
-  // סינון ההתרעות לפי התאריך שנבחר
   const filteredAlerts = alerts.filter(alert => {
     if (!filterDate) return true;
     const alertDate = alert.timestamp.split('T')[0];
@@ -117,6 +147,7 @@ function DispatcherDashboard() {
   return (
     <div className="flex h-screen bg-slate-100 font-sans" dir="rtl">
       
+      {/* תפריט צד */}
       <aside className="w-64 bg-slate-800 text-white p-6 flex flex-col justify-between shadow-xl z-10 shrink-0">
         <div>
           <h1 className="text-2xl font-bold mb-8 text-center border-b border-slate-700 pb-4">
@@ -137,7 +168,7 @@ function DispatcherDashboard() {
         
         <div className="flex flex-col gap-3">
             <div className="bg-slate-700 p-3 rounded text-sm text-center border border-slate-600">
-                🟢 סטטוס מערכת: תקין
+              🟢 סטטוס מערכת: תקין
             </div>
             <button 
                 onClick={handleLogout}
@@ -148,6 +179,7 @@ function DispatcherDashboard() {
         </div>
       </aside>
 
+      {/* אזור ראשי */}
       <main className="flex-1 p-6 flex flex-col overflow-hidden">
         <header className="mb-6 flex justify-between items-center shrink-0">
           <div>
@@ -163,7 +195,6 @@ function DispatcherDashboard() {
         <div className="flex flex-col gap-6 flex-1 overflow-hidden">
             
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 shrink-0 h-72">
-              
               <div className="lg:col-span-2 bg-white rounded-xl shadow-md border border-slate-200 flex flex-col h-full">
                 <div className="bg-slate-50 p-3 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center">
                     <span className="flex items-center gap-2">📍 מפת צמתים</span>
@@ -175,15 +206,13 @@ function DispatcherDashboard() {
                     </div>
                 </div>
               </div>
-
-              {/* אזור רשימת הצמתים - לחיץ ומנווט */}
+              
               <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col h-full">
                 <div className="bg-slate-50 p-3 border-b border-slate-200 flex flex-col gap-3 shrink-0">
                     <div className="flex justify-between items-center font-bold text-slate-700">
                         <span className="flex items-center gap-2">🚦 פריסת צמתים (DB)</span>
                         <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full">{filteredCrosswalks.length} תוצאות</span>
                     </div>
-                    {/* שורת חיפוש */}
                     <input 
                       type="text" 
                       placeholder="חיפוש לפי רחוב, אזור או מזהה..." 
@@ -225,15 +254,12 @@ function DispatcherDashboard() {
                             </div>
                         </div>
                     ))}
-                    {filteredCrosswalks.length === 0 && (
-                        <div className="text-center text-slate-500 text-sm mt-4">לא נמצאו צמתים התואמים לחיפוש.</div>
-                    )}
                 </div>
               </div>
-
           </div>
 
-          <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col flex-1 overflow-hidden">
+          {/* טבלת התרעות משולבת עם טעינה ושגיאות */}
+          <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col flex-1 overflow-hidden relative">
              <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center shrink-0">
                 <span>⚠️ טבלת התרעות מהשטח</span>
                 
@@ -259,82 +285,136 @@ function DispatcherDashboard() {
                 </div>
             </div>
             
-            <div className="overflow-x-auto overflow-y-auto flex-1">
-                <table className="w-full text-right border-collapse">
-                    <thead className="bg-white sticky top-0 border-b-2 border-slate-200 shadow-sm z-10">
-                        <tr className="text-slate-500 text-sm">
-                            <th className="p-4 font-bold whitespace-nowrap">תאריך ושעה</th>
-                            <th className="p-4 font-bold whitespace-nowrap">חומרה</th>
-                            <th className="p-4 font-bold whitespace-nowrap">תיאור אירוע</th>
-                            <th className="p-4 font-bold whitespace-nowrap">מיקום (מאקרו ומיקרו)</th>
-                            <th className="p-4 font-bold whitespace-nowrap">ציוד מנטר</th>
-                            <th className="p-4 font-bold whitespace-nowrap">סטטוס טיפול</th>
-                            <th className="p-4 font-bold whitespace-nowrap">הערות מוקדן</th>
-                            <th className="p-4 font-bold whitespace-nowrap">תיעוד</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                        {filteredAlerts.map((alert) => (
-                            <tr key={alert._id} className="hover:bg-slate-50 transition">
-                                <td className="p-4 font-mono text-slate-600 whitespace-nowrap text-sm">
-                                    <div>{formatDateDisplay(alert.timestamp)}</div>
-                                    <div className="text-slate-400">{formatTime(alert.timestamp)}</div>
-                                </td>
-                                <td className="p-4 whitespace-nowrap">{getSeverityBadge(alert.severity)}</td>
-                                <td className="p-4 font-bold text-slate-800">{alert.description}</td>
-                                <td className="p-4 whitespace-nowrap">
-                                    <div className="text-sm font-bold text-slate-800">{alert.location}</div>
-                                    <div className="text-xs text-slate-500 mt-1">{alert.areaname} ({alert.areaid})</div>
-                                </td>
-                                <td className="p-4 whitespace-nowrap">
-                                    <div className="flex flex-col gap-1 font-mono text-xs text-slate-600">
-                                        <span>📷 {alert.cameraId}</span>
-                                        <span>🚶 {alert.crosswalkId}</span>
-                                    </div>
-                                </td>
-                                <td className="p-4 whitespace-nowrap">
-                                    <select 
-                                      value={alert.status}
-                                      onChange={(e) => handleStatusChange(alert._id, e.target.value)}
-                                      className={`font-bold px-2 py-1 rounded outline-none cursor-pointer border text-sm ${getStatusStyle(alert.status)}`}
-                                    >
-                                      <option value="pending">🔴 טרם טופל</option>
-                                      <option value="in-progress">🟡 בטיפול</option>
-                                      <option value="resolved">🟢 טופל</option>
-                                    </select>
-                                </td>
-                                <td className="p-4 min-w-[200px]">
-                                    <input 
-                                      type="text" 
-                                      placeholder="הוסף הערה..." 
-                                      value={alert.note || ''}
-                                      onChange={(e) => handleNoteChange(alert._id, e.target.value)}
-                                      className="w-full p-2 border border-slate-200 rounded text-sm text-slate-700 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 bg-white transition"
-                                    />
-                                </td>
-                                <td className="p-4 whitespace-nowrap">
-                                    {alert.imageUrl ? (
-                                        <button className="text-blue-600 hover:text-blue-800 text-sm font-bold underline transition">
-                                            צפה 🖼️
-                                        </button>
-                                    ) : (
-                                        <span className="text-slate-400 text-sm">אין</span>
-                                    )}
-                                </td>
+            {/* 3. הצגת הספינר, שגיאה או הטבלה עצמה */}
+            {isLoading ? (
+                <div className="flex flex-col items-center justify-center flex-1 space-y-4 bg-slate-50/50">
+                    <div className="w-12 h-12 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
+                    <div className="text-slate-600 font-medium animate-pulse">מתחבר לשרת הנתונים...</div>
+                </div>
+            ) : error ? (
+                <div className="flex flex-col items-center justify-center flex-1 space-y-3 bg-red-50/50">
+                    <span className="text-4xl">⚠️</span>
+                    <span className="font-bold text-red-600">{error}</span>
+                    <button onClick={() => window.location.reload()} className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded font-medium transition shadow-sm border border-red-200">
+                        נסה להתחבר שוב
+                    </button>
+                </div>
+            ) : (
+                <div className="overflow-x-auto overflow-y-auto flex-1">
+                    <table className="w-full text-right border-collapse">
+                        <thead className="bg-white sticky top-0 border-b-2 border-slate-200 shadow-sm z-10">
+                            <tr className="text-slate-500 text-sm">
+                                <th className="p-4 font-bold whitespace-nowrap">תאריך ושעה</th>
+                                <th className="p-4 font-bold whitespace-nowrap">חומרה</th>
+                                <th className="p-4 font-bold whitespace-nowrap">תיאור אירוע</th>
+                                <th className="p-4 font-bold whitespace-nowrap">ניתוח AI (פילוח)</th>
+                                <th className="p-4 font-bold whitespace-nowrap">מיקום (מאקרו ומיקרו)</th>
+                                <th className="p-4 font-bold whitespace-nowrap">ציוד מנטר</th>
+                                <th className="p-4 font-bold whitespace-nowrap">סטטוס טיפול</th>
+                                <th className="p-4 font-bold whitespace-nowrap">תיעוד</th>
                             </tr>
-                        ))}
-                        {filteredAlerts.length === 0 && (
-                            <tr>
-                                <td colSpan="8" className="p-8 text-center text-slate-500">לא נמצאו אירועים לתאריך הנבחר.</td>
-                            </tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {filteredAlerts.map((alert) => (
+                                <tr key={alert._id} className="hover:bg-slate-50 transition">
+                                    <td className="p-4 font-mono text-slate-600 whitespace-nowrap text-sm">
+                                        <div>{formatDateDisplay(alert.timestamp)}</div>
+                                        <div className="text-slate-400">{formatTime(alert.timestamp)}</div>
+                                    </td>
+                                    <td className="p-4 whitespace-nowrap">{getSeverityBadge(alert.severity)}</td>
+                                    <td className="p-4 font-bold text-slate-800">{alert.description}</td>
+                                    
+                                    <td className="p-4 whitespace-nowrap">
+                                        {alert.aiAnalysis ? (
+                                            <div className="flex flex-col gap-1">
+                                                <span className={`text-xs px-2 py-1 rounded-full font-bold w-fit ${alert.aiAnalysis.riskLevel > 90 ? 'bg-red-600 text-white animate-pulse' : 'bg-orange-200 text-orange-800'}`}>
+                                                    {alert.aiAnalysis.riskLevel}% סכנה
+                                                </span>
+                                                <span className="text-xs text-slate-600 font-medium">
+                                                    זיהוי: <span className="font-bold text-blue-700">{alert.aiAnalysis.targetType}</span>
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-slate-400">אין נתוני חכמים</span>
+                                        )}
+                                    </td>
+
+                                    <td className="p-4 whitespace-nowrap">
+                                        <div className="text-sm font-bold text-slate-800">{alert.location}</div>
+                                        <div className="text-xs text-slate-500 mt-1">{alert.areaname} ({alert.areaid})</div>
+                                    </td>
+                                    <td className="p-4 whitespace-nowrap">
+                                        <div className="flex flex-col gap-1 font-mono text-xs text-slate-600">
+                                            <span>📷 {alert.cameraId}</span>
+                                            <span>🚶 {alert.crosswalkId}</span>
+                                        </div>
+                                    </td>
+                                    <td className="p-4 whitespace-nowrap">
+                                        <select 
+                                          value={alert.status}
+                                          onChange={(e) => handleStatusChange(alert._id, e.target.value)}
+                                          className={`font-bold px-2 py-1 rounded outline-none cursor-pointer border text-sm ${getStatusStyle(alert.status)}`}
+                                        >
+                                          <option value="pending">🔴 טרם טופל</option>
+                                          <option value="in-progress">🟡 בטיפול</option>
+                                          <option value="resolved">🟢 טופל</option>
+                                        </select>
+                                    </td>
+                                    <td className="p-4 whitespace-nowrap">
+                                        {/* שינוי: לחיצה פותחת את ה-Modal במקום Alert קופץ */}
+                                        {(alert.aiAnalysis?.imageUrl || alert.imageUrl) ? (
+                                            <button 
+                                              className="text-blue-600 hover:text-blue-800 text-sm font-bold underline transition"
+                                              onClick={() => setSelectedImage(alert.aiAnalysis?.imageUrl || alert.imageUrl)}
+                                            >
+                                                צפה 🖼️
+                                            </button>
+                                        ) : (
+                                            <span className="text-slate-400 text-sm">אין</span>
+                                        )}
+                                    </td>
+                                </tr>
+                            ))}
+                            {filteredAlerts.length === 0 && (
+                                <tr>
+                                    <td colSpan="8" className="p-8 text-center text-slate-500">לא נמצאו אירועים לתאריך הנבחר.</td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            )}
           </div>
 
         </div>
       </main>
+
+      {/* 4. Modal (חלונית קופצת) להצגת התמונה - סוגר את דרישת Cloudinary */}
+      {selectedImage && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all">
+            <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-4xl w-full flex flex-col relative border border-slate-200">
+                <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
+                    <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                        📷 תיעוד אירוע סכנה מהשטח
+                    </h3>
+                    <button 
+                        onClick={() => setSelectedImage(null)} 
+                        className="bg-red-50 text-red-500 hover:bg-red-500 hover:text-white p-2 rounded-lg font-bold transition flex items-center gap-2 border border-red-100"
+                    >
+                        סגור <span className="text-lg">✖</span>
+                    </button>
+                </div>
+                <div className="bg-slate-100 rounded-xl flex items-center justify-center p-2 border border-slate-200">
+                    <img 
+                        src={selectedImage} 
+                        alt="Event Snapshot" 
+                        className="w-full h-auto rounded-lg max-h-[65vh] object-contain shadow-sm" 
+                    />
+                </div>
+            </div>
+        </div>
+      )}
+
     </div>
   );
 }
