@@ -1,3 +1,14 @@
+/**
+ * config/socket.js
+ * ----------------
+ * Sets up Socket.io for real-time updates to the frontend.
+ *   - initSocket(server): attaches Socket.io to the HTTP server.
+ *   - getIO():            returns the shared Socket.io instance.
+ *   - watchAlerts():      listens to the Alerts collection (MongoDB change
+ *                         stream) and emits a "newAlert" event on every insert,
+ *                         so new alerts reach the frontend live.
+ */
+
 import { Server } from 'socket.io';
 import Alert from '../models/alert.js';
 

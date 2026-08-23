@@ -1,3 +1,11 @@
+"""
+roi_monitor.py
+--------------
+Business logic (Sprint 4): the Region of Interest (crosswalk danger zone).
+Tests whether a detected object falls inside the ROI, applies an alert
+cooldown, and produces `DangerEvent` objects for the backend. Also draws the ROI.
+"""
+
 import time
 from dataclasses import dataclass
 

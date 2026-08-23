@@ -1,3 +1,10 @@
+"""
+verify_setup.py
+---------------
+Phase 1 install check: loads the lightweight YOLOv8 model and runs it on a
+single test image to confirm OpenCV + Ultralytics are installed correctly.
+"""
+
 import argparse
 import sys
 

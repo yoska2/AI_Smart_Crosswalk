@@ -1,3 +1,11 @@
+"""
+config.py
+---------
+Central configuration for the Smart Crosswalk vision "brain".
+All tunables live here: model, video source, target classes, ROI polygon,
+alert cooldown, drawing colors, and the backend API settings.
+"""
+
 # Model
 MODEL_PATH = "yolov8n.pt"   # lightweight model; swap for yolov8s.pt for accuracy
 CONFIDENCE_THRESHOLD = 0.35  # ignore detections below this confidence
@@ -40,7 +48,7 @@ COLOR_DANGER = (0, 0, 255)      # red: object inside the ROI
 WINDOW_NAME = "Smart Crosswalk - Vision Brain"
 
 #Backend API
-API_URL = "http://localhost:5000/api/alerts"
+API_URL = "http://localhost:3000/api/alerts"
 API_TIMEOUT_SECONDS = 5          # per-request network timeout
 API_ENABLED = True               # set False to run vision-only (no POST)
 

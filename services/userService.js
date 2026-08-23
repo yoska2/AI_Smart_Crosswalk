@@ -4,7 +4,6 @@ services/userService.js
 Service responsible for user-related operations:
 registration, authentication, password hashing,
 JWT generation, and database access.
-(Brought in from Yossef's branch yosi-B1.)
 ========================================
 */
 import crypto from "crypto";

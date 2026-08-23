@@ -1,3 +1,11 @@
+"""
+video_processor.py
+------------------
+Owns the OpenCV video loop: open the source, read frames, run detection,
+evaluate the ROI, draw the results, display them, and dispatch danger alerts.
+Built to be robust - a bad source, dropped camera, or dead API never crash it.
+"""
+
 import time
 
 import cv2

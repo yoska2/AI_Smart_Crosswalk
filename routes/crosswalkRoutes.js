@@ -1,12 +1,16 @@
+/**
+ * routes/crosswalkRoutes.js
+ * -------------------------
+ * HTTP endpoints for crosswalks (mounted at /api/crosswalks).
+ *   POST /  -> create a crosswalk
+ *   GET  /  -> list all crosswalks from the database
+ */
 import express from 'express';
 import { createCrosswalk, fetchAllCrosswalks } from '../services/crosswalkService.js';
-import fs from 'fs';
 
 const router = express.Router();
 
-const rawData = fs.readFileSync('./dummy-data.json'); 
-const dummyData = JSON.parse(rawData);
-
+// POST /api/crosswalks - create a new crosswalk.
 router.post('/', async (req, res) => {
     try {
         const savedCrosswalk = await createCrosswalk(req.body);
@@ -16,10 +20,11 @@ router.post('/', async (req, res) => {
     }
 });
 
+// GET /api/crosswalks - return all crosswalks from the real database.
 router.get('/', async (req, res) => {
-    console.log("Data from JSON file: ", dummyData.crosswalks);
     try {
-        res.json(dummyData.crosswalks);
+        const crosswalks = await fetchAllCrosswalks();
+        res.json(crosswalks);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

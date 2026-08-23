@@ -1,3 +1,11 @@
+"""
+alert_service.py
+----------------
+Backend integration (Sprint 4): sends danger alerts to the Node server.
+All HTTP runs on a background thread so the video loop never blocks; a slow or
+down server degrades gracefully instead of freezing the stream.
+"""
+
 import queue
 import threading
 from datetime import datetime, timezone

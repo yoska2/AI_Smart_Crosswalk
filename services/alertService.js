@@ -1,3 +1,10 @@
+/**
+ * services/alertService.js
+ * ------------------------
+ * Handles alerts: save a new one (uploads the image to Cloudinary first)
+ * and get all alerts from the database.
+ */
+
 import Alert from '../models/alert.js';
 import { uploadImage } from './cloudinaryService.js';
 

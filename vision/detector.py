@@ -1,3 +1,12 @@
+"""
+detector.py
+-----------
+Thin wrapper around the Ultralytics YOLOv8 model. Loads the model once and
+turns each frame into a clean list of `Detection` objects (person/vehicle
+boxes above a confidence threshold), so the rest of the code never touches
+YOLO internals.
+"""
+
 from dataclasses import dataclass
 
 from ultralytics import YOLO

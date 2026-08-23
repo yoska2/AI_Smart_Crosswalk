@@ -1,3 +1,10 @@
+/**
+ * config/cloudinary.js
+ * --------------------
+ * Configures the Cloudinary SDK with the credentials from .env.
+ * (The upload logic lives in services/cloudinaryService.js.)
+ */
+
 import { v2 as cloudinary } from 'cloudinary';
 import dotenv from 'dotenv';
 

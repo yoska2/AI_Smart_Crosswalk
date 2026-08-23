@@ -45,6 +45,8 @@
       "areaName": "מרכז העיר",
       "severity": "High",
       "description": "הולך רגל זוהה על הכביש באור אדום",
+      "personType": "adult",
+      "distanceFromCrosswalk": 0.5,
       "imageUrl": "https://dummyimage.com/600x400/000/fff&text=Pedestrian+Danger",
       "timestamp": "2026-06-03T08:30:00Z"
     },
@@ -57,6 +59,8 @@
       "areaName": "צפון תל אביב",
       "severity": "Medium",
       "description": "רכב נעצר על קו מעבר החצייה",
+      "personType": "unknown",
+      "distanceFromCrosswalk": 0,
       "imageUrl": "https://dummyimage.com/600x400/000/fff&text=Car+on+Crosswalk",
       "timestamp": "2026-06-03T11:15:00Z"
     }

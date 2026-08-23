@@ -5,6 +5,7 @@ import cloudinary from '../config/cloudinary.js';
  * Accepts either a full data URI ("data:image/jpeg;base64,...") or a bare
  * base64 string (we add the prefix if it is missing).
  */
+
 export const uploadImage = async (image) => {
     const dataUri = image.startsWith('data:')
         ? image

@@ -1,13 +1,20 @@
+/**
+ * routes/ledRoutes.js
+ * -------------------
+ * HTTP endpoints for the road LEDs (mounted at /api/leds).
+ *   POST /                  -> create an LED record
+ *   GET  /?crosswalkId=cw_1 -> list LEDs from the DB, optionally filtered
+ */
 import express from 'express';
-import { createLed, fetchAllLeds } from '../services/ledService.js';
-import fs from 'fs';
+import {
+    createLed,
+    fetchAllLeds,
+    fetchLedsByCrosswalk,
+} from '../services/ledService.js';
 
 const router = express.Router();
 
-const rawData = fs.readFileSync('./dummy-data.json');
-const dummyData = JSON.parse(rawData);
-
-// POST /api/leds - Create new LED via service
+// POST /api/leds - create a new LED record.
 router.post('/', async (req, res) => {
     try {
         const savedLed = await createLed(req.body);
@@ -17,17 +24,14 @@ router.post('/', async (req, res) => {
     }
 });
 
-// GET /api/leds - Get all LEDs, optionally filtered by ?crosswalkId=cw_001
+// GET /api/leds - return LEDs from the DB, optionally filtered by ?crosswalkId.
 router.get('/', async (req, res) => {
     try {
         const { crosswalkId } = req.query;
         const leds = crosswalkId
-            ? dummyData.leds.filter((l) => l.crosswalkId === crosswalkId)
-            : dummyData.leds;
+            ? await fetchLedsByCrosswalk(crosswalkId)
+            : await fetchAllLeds();
         res.json(leds);
-        //Temporarily commented out real DB fetch
-        // const leds = await fetchAllLeds();
-        // res.json(leds);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

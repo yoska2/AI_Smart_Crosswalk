@@ -1,3 +1,10 @@
+"""
+main.py
+-------
+Entry point for the vision "brain". Parses the --source argument and runs the
+VideoProcessor loop (open video -> detect -> check ROI -> draw -> alert).
+"""
+
 import argparse
 import sys
 
