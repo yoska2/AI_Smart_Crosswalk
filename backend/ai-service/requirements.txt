@@ -1,0 +1,12 @@
+# PROVENANCE: [RACHE] your requirements (add fastapi + uvicorn for the service).
+# ============================================================
+# SANDBOX FILE - SETTLED base. Microservice route also needs: fastapi, uvicorn.
+# ============================================================
+
+# Smart City Crosswalk System - Sprint 3 (Vision "Brain")
+# Python 3.9+ recommended
+
+ultralytics==8.2.103   # YOLOv8 object detection (pulls in torch/torchvision)
+opencv-python==4.10.0.84  # Video capture, drawing, ROI geometry
+requests==2.32.3          # Backend API communication
+numpy==1.26.4             # Array / geometry helpers
