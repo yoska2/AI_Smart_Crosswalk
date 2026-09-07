@@ -41,7 +41,7 @@ function DispatcherDashboard() {
       imageUrl: "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
       timestamp: "2026-06-03T08:30:00Z",
       status: "pending",
-      riskLevel: 95
+      confidence: 95 // תוקן ל-confidence
     },
     {
       _id: "alert_002",
@@ -57,7 +57,7 @@ function DispatcherDashboard() {
       imageUrl: "",
       timestamp: "2026-06-03T11:15:00Z",
       status: "in-progress",
-      riskLevel: 60
+      confidence: 60 // תוקן ל-confidence
     }
   ]);
 
@@ -312,8 +312,9 @@ function DispatcherDashboard() {
                                     <td className="p-4 whitespace-nowrap">
                                         {alert.personType ? (
                                             <div className="flex flex-col gap-1">
-                                                <span className={`text-xs px-2 py-1 rounded-full font-bold w-fit ${alert.riskLevel > 90 ? 'bg-red-600 text-white animate-pulse' : 'bg-orange-200 text-orange-800'}`}>
-                                                    {alert.riskLevel || '0'}% סכנה
+                                                {/* תוקן ל-confidence */}
+                                                <span className={`text-xs px-2 py-1 rounded-full font-bold w-fit ${alert.confidence > 90 ? 'bg-red-600 text-white animate-pulse' : 'bg-orange-200 text-orange-800'}`}>
+                                                    {alert.confidence || '0'}% ביטחון
                                                 </span>
                                                 <span className="text-xs text-slate-600 font-medium">
                                                     זיהוי: <span className="font-bold text-blue-700">{alert.personType === 'adult' ? 'מבוגר' : alert.personType}</span>
