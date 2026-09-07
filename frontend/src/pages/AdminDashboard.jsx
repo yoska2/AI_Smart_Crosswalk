@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 function AdminDashboard() {
   const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [users, setUsers] = useState([
     { id: 'U-001', name: 'ישראל ישראלי', username: 'admin', role: 'Admin', status: 'active', lastLogin: '2026-07-02 08:30' },
@@ -18,13 +19,11 @@ function AdminDashboard() {
     navigate('/');
   };
 
-
   const handleDeleteUser = (id) => {
     if (window.confirm('האם אתה בטוח שברצונך למחוק משתמש זה? פעולה זו בלתי הפיכה.')) {
       setUsers(users.filter(user => user.id !== id));
     }
   };
-
   
   const handleToggleStatus = (id) => {
     setUsers(users.map(user => {
@@ -45,10 +44,15 @@ function AdminDashboard() {
     return <span className={`px-2 py-1 rounded text-xs font-bold border ${roles[role]}`}>{role}</span>;
   };
 
+  const filteredUsers = users.filter(user => 
+    user.name.includes(searchTerm) || 
+    user.username.includes(searchTerm) ||
+    user.id.includes(searchTerm)
+  );
+
   return (
     <div className="flex h-screen bg-slate-50 font-sans" dir="rtl">
       
-     
       <aside className="w-64 bg-slate-900 text-white p-6 flex flex-col justify-between shadow-2xl z-10 shrink-0">
         <div>
           <h1 className="text-2xl font-bold mb-8 text-center border-b border-slate-700 pb-4 text-purple-400">
@@ -83,7 +87,6 @@ function AdminDashboard() {
         </div>
       </aside>
 
-     
       <main className="flex-1 p-8 flex flex-col overflow-y-auto">
         
         <header className="mb-8 flex justify-between items-center shrink-0 border-b border-slate-200 pb-6">
@@ -126,13 +129,14 @@ function AdminDashboard() {
               </div>
           </div>
 
-          
           <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col flex-1 overflow-hidden">
               <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center">
                   <span>רשימת הרשאות ומשתמשים</span>
                   <input 
                       type="text" 
-                      placeholder="חיפוש משתמש..." 
+                      placeholder="חיפוש משתמש או מזהה..." 
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       className="p-1.5 px-3 border border-slate-300 rounded text-sm outline-none focus:border-purple-500 w-64 font-normal"
                   />
               </div>
@@ -151,7 +155,7 @@ function AdminDashboard() {
                           </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                          {users.map((user) => (
+                          {filteredUsers.map((user) => (
                               <tr key={user.id} className={`hover:bg-slate-50 transition ${user.status === 'suspended' ? 'bg-red-50/30' : ''}`}>
                                   <td className="p-4 font-mono text-sm text-slate-500">{user.id}</td>
                                   <td className="p-4 font-bold text-slate-800">{user.name}</td>
@@ -186,6 +190,13 @@ function AdminDashboard() {
                                   </td>
                               </tr>
                           ))}
+                          {filteredUsers.length === 0 && (
+                              <tr>
+                                  <td colSpan="7" className="p-8 text-center text-slate-500">
+                                      לא נמצאו משתמשים התואמים לחיפוש.
+                                  </td>
+                              </tr>
+                          )}
                       </tbody>
                   </table>
               </div>

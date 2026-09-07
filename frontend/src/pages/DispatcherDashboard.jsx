@@ -1,85 +1,74 @@
 import { useState, useEffect } from 'react';
 import { io } from 'socket.io-client';
 import { useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 import crosswalksData from '../data/crosswalks.json';
+
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+    iconUrl: icon,
+    shadowUrl: iconShadow,
+    iconSize: [25, 41],
+    iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 function DispatcherDashboard() {
   const navigate = useNavigate();
 
-  // 1. משתני State חדשים עבור טעינה, שגיאות ותצוגת תמונה (Modal)
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
-
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
 
   const [alerts, setAlerts] = useState([
-    { 
-      _id: 'alert_ai_001', 
-      cameraId: 'CAM-NORTH-01',
-      crosswalkId: 'CW-882',
-      location: 'צומת הופיין / גולומב', 
-      areaid: 'AREA-HLN-C',
-      areaname: 'חולון מרכז',
-      severity: 'high',
-      description: 'התפרצות לכביש באדום', 
-      timestamp: '2026-06-05T19:55:00Z',
-      status: 'pending',
-      note: '',
-      aiAnalysis: {
-        imageUrl: 'https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg', 
-        targetType: 'ילד',
-        riskLevel: 95, 
-        distanceFromCrosswalk: '0.5'
-      }
+    {
+      _id: "alert_001",
+      cameraId: "cam_101",
+      crosswalkId: "CW-882",
+      location: "צומת הופיין / גולומב",
+      areaId: "AREA-HLN-C",
+      areaName: "חולון מרכז",
+      severity: "High",
+      description: "הולך רגל זוהה על הכביש באור אדום",
+      personType: "adult",
+      distanceFromCrosswalk: 0.5,
+      imageUrl: "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
+      timestamp: "2026-06-03T08:30:00Z",
+      status: "pending",
+      riskLevel: 95
     },
-    { 
-      _id: 'alert_002', 
-      cameraId: 'CAM-SOUTH-04',
-      crosswalkId: 'CW-105',
-      location: 'סוקולוב / קראוזה', 
-      areaid: 'AREA-HLN-C',
-      areaname: 'חולון מרכז',
-      severity: 'medium',
-      description: 'רכב עצר על קו חצייה', 
-      imageUrl: '',
-      timestamp: '2026-06-05T19:50:30Z',
-      status: 'in-progress',
-      note: 'ניידת סיור בדרך למקום',
-      aiAnalysis: null
-    },
-    { 
-      _id: 'alert_003', 
-      cameraId: 'CAM-EAST-09',
-      crosswalkId: 'CW-443',
-      location: 'קמפוס HIT - שער ראשי', 
-      areaid: 'AREA-HLN-E',
-      areaname: 'חולון מזרח',
-      severity: 'low',
-      description: 'עומס חריג של הולכי רגל', 
-      imageUrl: 'https://images.unsplash.com/photo-1517737812598-1a43d0ef2a52?auto=format&fit=crop&q=80&w=600',
-      timestamp: '2026-06-04T14:42:15Z',
-      status: 'resolved',
-      note: 'העומס השתחרר, תקין',
-      aiAnalysis: null
-    },
+    {
+      _id: "alert_002",
+      cameraId: "cam_201",
+      crosswalkId: "CW-105",
+      location: "סוקולוב / קראוזה",
+      areaId: "AREA-HLN-C",
+      areaName: "חולון מרכז",
+      severity: "Medium",
+      description: "רכב נעצר על קו מעבר החצייה",
+      personType: "unknown",
+      distanceFromCrosswalk: 0,
+      imageUrl: "",
+      timestamp: "2026-06-03T11:15:00Z",
+      status: "in-progress",
+      riskLevel: 60
+    }
   ]);
 
-  // 2. סימולציה של טעינת נתונים (Loading Spinner) וחיבור ל-Socket
   useEffect(() => {
-    // סימולציה: מציגים את הספינר למשך 1.5 שניות לפני שמראים את הנתונים
     setTimeout(() => {
       setIsLoading(false);
-      // אם תרצה לבדוק מצב שגיאה, תוכל להוריד את ההערה מהשורה הבאה:
-      // setError('שגיאת תקשורת: השרת לא מגיב');
     }, 1500);
 
-    // חיבור לשרת ה-Backend
-    const socket = io('http://localhost:5000'); 
+    const socket = io('http://localhost:3000'); 
 
-    socket.on('new-ai-alert', (newAlertData) => {
-      console.log('🚨 התקבלה התרעה חדשה מה-AI:', newAlertData);
+    socket.on('newAlert', (newAlertData) => {
       setAlerts((prevAlerts) => [newAlertData, ...prevAlerts]);
     });
 
@@ -97,16 +86,10 @@ function DispatcherDashboard() {
     ));
   };
 
-  const handleNoteChange = (alertId, newNote) => {
-    setAlerts(alerts.map(alert => 
-      alert._id === alertId ? { ...alert, note: newNote } : alert
-    ));
-  };
-
   const filteredCrosswalks = crosswalksData.filter(cw => 
-    cw.location.includes(searchTerm) || 
-    cw.areaname.includes(searchTerm) ||
-    cw._id.includes(searchTerm)
+    (cw.location && cw.location.includes(searchTerm)) || 
+    (cw.areaName && cw.areaName.includes(searchTerm)) ||
+    (cw._id && cw._id.includes(searchTerm))
   );
 
   const filteredAlerts = alerts.filter(alert => {
@@ -123,31 +106,32 @@ function DispatcherDashboard() {
   };
 
   const getSeverityBadge = (severity) => {
-    if (severity === 'high') return <span className="bg-red-100 text-red-800 px-2 py-1 rounded font-bold text-xs border border-red-200">🔴 קריטי</span>;
-    if (severity === 'medium') return <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded font-bold text-xs border border-orange-200">🟠 בינוני</span>;
+    const s = severity?.toLowerCase();
+    if (s === 'high') return <span className="bg-red-100 text-red-800 px-2 py-1 rounded font-bold text-xs border border-red-200">🔴 קריטי</span>;
+    if (s === 'medium') return <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded font-bold text-xs border border-orange-200">🟠 בינוני</span>;
     return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold text-xs border border-blue-200">🔵 נמוך</span>;
   };
 
-  const getCrosswalkStatusBadge = (status) => {
-    if (status === 'active') return <span className="text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200 text-xs font-bold">פעיל</span>;
-    if (status === 'warning') return <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-200 text-xs font-bold">תקלה חלקית</span>;
+  const getCrosswalkStatusBadge = (status, isActive) => {
+    if (isActive || status === 'active') return <span className="text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200 text-xs font-bold">פעיל</span>;
+    if (status === 'warning') return <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-200 text-xs font-bold">תקלה</span>;
     return <span className="text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-300 text-xs font-bold">מנותק</span>;
   };
 
   const formatTime = (isoString) => {
+    if (!isoString) return '';
     const date = new Date(isoString);
     return date.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
   };
 
   const formatDateDisplay = (isoString) => {
+    if (!isoString) return '';
     const date = new Date(isoString);
     return date.toLocaleDateString('he-IL');
   };
 
   return (
     <div className="flex h-screen bg-slate-100 font-sans" dir="rtl">
-      
-      {/* תפריט צד */}
       <aside className="w-64 bg-slate-800 text-white p-6 flex flex-col justify-between shadow-xl z-10 shrink-0">
         <div>
           <h1 className="text-2xl font-bold mb-8 text-center border-b border-slate-700 pb-4">
@@ -165,7 +149,6 @@ function DispatcherDashboard() {
             </button>
           </nav>
         </div>
-        
         <div className="flex flex-col gap-3">
             <div className="bg-slate-700 p-3 rounded text-sm text-center border border-slate-600">
               🟢 סטטוס מערכת: תקין
@@ -179,7 +162,6 @@ function DispatcherDashboard() {
         </div>
       </aside>
 
-      {/* אזור ראשי */}
       <main className="flex-1 p-6 flex flex-col overflow-hidden">
         <header className="mb-6 flex justify-between items-center shrink-0">
           <div>
@@ -188,22 +170,43 @@ function DispatcherDashboard() {
           </div>
           <div className="bg-white px-4 py-2 rounded-full shadow-sm text-sm text-green-700 border border-green-200 font-bold flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            מחובר למערכת
+            מחובר לשרת הנתונים
           </div>
         </header>
 
         <div className="flex flex-col gap-6 flex-1 overflow-hidden">
-            
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 shrink-0 h-72">
-              <div className="lg:col-span-2 bg-white rounded-xl shadow-md border border-slate-200 flex flex-col h-full">
-                <div className="bg-slate-50 p-3 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center">
+              <div className="lg:col-span-2 bg-white rounded-xl shadow-md border border-slate-200 flex flex-col h-full overflow-hidden">
+                <div className="bg-slate-50 p-3 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center z-10 relative">
                     <span className="flex items-center gap-2">📍 מפת צמתים</span>
                     <span className="text-xs font-normal text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">חיבור API חי</span>
                 </div>
-                <div className="flex-1 bg-slate-200 flex items-center justify-center rounded-b-xl">
-                    <div className="text-center">
-                        <p className="text-slate-500 text-xl font-medium mb-2">כאן נשלב את המפה 🗺️</p>
-                    </div>
+                <div className="flex-1 bg-slate-200 relative z-0">
+                    <MapContainer 
+                        center={[32.016, 34.774]} 
+                        zoom={14} 
+                        style={{ height: '100%', width: '100%', minHeight: '200px' }}
+                    >
+                        <TileLayer
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                        />
+                        {filteredCrosswalks.map((cw) => (
+                            cw.lat && cw.lng ? (
+                                <Marker key={cw._id} position={[cw.lat, cw.lng]}>
+                                    <Popup>
+                                        <div className="text-right font-sans" dir="rtl">
+                                            <strong className="block text-blue-700">{cw.location}</strong>
+                                            <span className="text-xs text-gray-600 block mb-1">{cw.areaName}</span>
+                                            <span className="text-xs font-bold">
+                                                סטטוס: {cw.isActive ? '🟢 פעיל' : '🔴 מנותק'}
+                                            </span>
+                                        </div>
+                                    </Popup>
+                                </Marker>
+                            ) : null
+                        ))}
+                    </MapContainer>
                 </div>
               </div>
               
@@ -221,7 +224,6 @@ function DispatcherDashboard() {
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                 </div>
-                
                 <div className="p-3 overflow-y-auto flex-1 flex flex-col gap-3">
                     {filteredCrosswalks.map((cw) => (
                         <div 
@@ -231,25 +233,12 @@ function DispatcherDashboard() {
                         >
                             <div className="flex justify-between items-start">
                                 <span className="font-bold text-sm text-slate-800 group-hover:text-blue-700">{cw.location}</span>
-                                {getCrosswalkStatusBadge(cw.status)}
+                                {getCrosswalkStatusBadge(cw.status, cw.isActive)}
                             </div>
                             <div className="flex justify-between items-center text-xs text-slate-500 mt-1">
-                                <span>{cw.areaname}</span>
+                                <span>{cw.areaName || cw.areaname}</span>
                                 <span className="bg-slate-100 px-2 py-1 rounded flex items-center gap-1 font-mono">
                                     {cw._id}
-                                </span>
-                            </div>
-                            <div className="border-t border-slate-100 pt-2 mt-1 flex justify-between items-center text-xs font-medium">
-                                <div className="flex gap-3">
-                                    <span className={`flex items-center gap-1 ${cw.cameraStatus === 'online' ? 'text-green-600' : 'text-red-500'}`}>
-                                        {cw.cameraStatus === 'online' ? '🟢' : '🔴'} מצלמות
-                                    </span>
-                                    <span className={`flex items-center gap-1 ${cw.ledStatus === 'online' ? 'text-green-600' : 'text-red-500'}`}>
-                                        {cw.ledStatus === 'online' ? '🟢' : '🔴'} לדים
-                                    </span>
-                                </div>
-                                <span className="text-blue-600 font-bold opacity-0 group-hover:opacity-100 transition">
-                                    לפרטים ➔
                                 </span>
                             </div>
                         </div>
@@ -258,11 +247,9 @@ function DispatcherDashboard() {
               </div>
           </div>
 
-          {/* טבלת התרעות משולבת עם טעינה ושגיאות */}
           <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col flex-1 overflow-hidden relative">
              <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center shrink-0">
                 <span>⚠️ טבלת התרעות מהשטח</span>
-                
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2 text-sm font-normal">
                         <label htmlFor="dateFilter" className="text-slate-600">סנן לפי תאריך:</label>
@@ -285,7 +272,6 @@ function DispatcherDashboard() {
                 </div>
             </div>
             
-            {/* 3. הצגת הספינר, שגיאה או הטבלה עצמה */}
             {isLoading ? (
                 <div className="flex flex-col items-center justify-center flex-1 space-y-4 bg-slate-50/50">
                     <div className="w-12 h-12 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
@@ -323,25 +309,23 @@ function DispatcherDashboard() {
                                     </td>
                                     <td className="p-4 whitespace-nowrap">{getSeverityBadge(alert.severity)}</td>
                                     <td className="p-4 font-bold text-slate-800">{alert.description}</td>
-                                    
                                     <td className="p-4 whitespace-nowrap">
-                                        {alert.aiAnalysis ? (
+                                        {alert.personType ? (
                                             <div className="flex flex-col gap-1">
-                                                <span className={`text-xs px-2 py-1 rounded-full font-bold w-fit ${alert.aiAnalysis.riskLevel > 90 ? 'bg-red-600 text-white animate-pulse' : 'bg-orange-200 text-orange-800'}`}>
-                                                    {alert.aiAnalysis.riskLevel}% סכנה
+                                                <span className={`text-xs px-2 py-1 rounded-full font-bold w-fit ${alert.riskLevel > 90 ? 'bg-red-600 text-white animate-pulse' : 'bg-orange-200 text-orange-800'}`}>
+                                                    {alert.riskLevel || '0'}% סכנה
                                                 </span>
                                                 <span className="text-xs text-slate-600 font-medium">
-                                                    זיהוי: <span className="font-bold text-blue-700">{alert.aiAnalysis.targetType}</span>
+                                                    זיהוי: <span className="font-bold text-blue-700">{alert.personType === 'adult' ? 'מבוגר' : alert.personType}</span>
                                                 </span>
                                             </div>
                                         ) : (
                                             <span className="text-xs text-slate-400">אין נתוני חכמים</span>
                                         )}
                                     </td>
-
                                     <td className="p-4 whitespace-nowrap">
                                         <div className="text-sm font-bold text-slate-800">{alert.location}</div>
-                                        <div className="text-xs text-slate-500 mt-1">{alert.areaname} ({alert.areaid})</div>
+                                        <div className="text-xs text-slate-500 mt-1">{alert.areaName} ({alert.areaId})</div>
                                     </td>
                                     <td className="p-4 whitespace-nowrap">
                                         <div className="flex flex-col gap-1 font-mono text-xs text-slate-600">
@@ -351,9 +335,9 @@ function DispatcherDashboard() {
                                     </td>
                                     <td className="p-4 whitespace-nowrap">
                                         <select 
-                                          value={alert.status}
+                                          value={alert.status || 'pending'}
                                           onChange={(e) => handleStatusChange(alert._id, e.target.value)}
-                                          className={`font-bold px-2 py-1 rounded outline-none cursor-pointer border text-sm ${getStatusStyle(alert.status)}`}
+                                          className={`font-bold px-2 py-1 rounded outline-none cursor-pointer border text-sm ${getStatusStyle(alert.status || 'pending')}`}
                                         >
                                           <option value="pending">🔴 טרם טופל</option>
                                           <option value="in-progress">🟡 בטיפול</option>
@@ -361,11 +345,10 @@ function DispatcherDashboard() {
                                         </select>
                                     </td>
                                     <td className="p-4 whitespace-nowrap">
-                                        {/* שינוי: לחיצה פותחת את ה-Modal במקום Alert קופץ */}
-                                        {(alert.aiAnalysis?.imageUrl || alert.imageUrl) ? (
+                                        {alert.imageUrl ? (
                                             <button 
                                               className="text-blue-600 hover:text-blue-800 text-sm font-bold underline transition"
-                                              onClick={() => setSelectedImage(alert.aiAnalysis?.imageUrl || alert.imageUrl)}
+                                              onClick={() => setSelectedImage(alert.imageUrl)}
                                             >
                                                 צפה 🖼️
                                             </button>
@@ -385,11 +368,9 @@ function DispatcherDashboard() {
                 </div>
             )}
           </div>
-
         </div>
       </main>
 
-      {/* 4. Modal (חלונית קופצת) להצגת התמונה - סוגר את דרישת Cloudinary */}
       {selectedImage && (
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all">
             <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-4xl w-full flex flex-col relative border border-slate-200">
@@ -414,7 +395,6 @@ function DispatcherDashboard() {
             </div>
         </div>
       )}
-
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Login from './pages/Login';
+import Register from './pages/Register';
 import DispatcherDashboard from './pages/DispatcherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import ManagerDashboard from './pages/ManagerDashboard';
@@ -11,6 +12,7 @@ function App() {
     <Router>
       <Routes>
         <Route path="/" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/dispatcher" element={<DispatcherDashboard />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/manager" element={<ManagerDashboard />} />

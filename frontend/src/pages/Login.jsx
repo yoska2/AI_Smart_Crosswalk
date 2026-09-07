@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios'; // ייבוא ספריית הבקשות
+import axios from 'axios';
 
 function Login() {
   const [username, setUsername] = useState('');
@@ -13,19 +13,10 @@ function Login() {
     const apiUrl = import.meta.env.VITE_API_URL;
 
     try {
-      /* * קוד עתידי לחיבור מול ה-Backend האמיתי שלכם:
-       * const response = await axios.post(`${apiUrl}/api/auth/login`, { username, password });
-       * const token = response.data.token;
-       */
-
-      // סימולציה זמנית של קבלת טוקן מהשרת (עד שה-Backend יהיה מוכן)
-      console.log(`Sending request to: ${apiUrl}`);
       const mockToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.mock.token";
       
-      // 1. שמירת הטוקן ב-localStorage 
       localStorage.setItem('token', mockToken);
       
-      // 2. שמירת סוג המשתמש (לצורך הניווט במסכים)
       const lowerUser = username.toLowerCase();
       
       if (lowerUser === 'admin') {
@@ -39,7 +30,6 @@ function Login() {
       }
 
     } catch (error) {
-      console.error("Login failed:", error);
       alert("שגיאה בהתחברות. אנא נסה שוב.");
     }
   };
@@ -74,6 +64,16 @@ function Login() {
             התחבר למערכת
           </button>
         </form>
+
+        <div className="mt-6 text-sm text-gray-600">
+          עדיין אין לך חשבון?{' '}
+          <span 
+            onClick={() => navigate('/register')} 
+            className="text-blue-600 font-bold cursor-pointer hover:underline"
+          >
+            הירשם כאן
+          </span>
+        </div>
       </div>
     </div>
   );
