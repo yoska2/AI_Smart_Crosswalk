@@ -26,6 +26,7 @@ function DispatcherDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
 
+  // עדכנו את נתוני הדמה כך שיכילו isResolved במקום status
   const [alerts, setAlerts] = useState([
     {
       _id: "alert_001",
@@ -40,8 +41,8 @@ function DispatcherDashboard() {
       distanceFromCrosswalk: 0.5,
       imageUrl: "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
       timestamp: "2026-06-03T08:30:00Z",
-      status: "pending",
-      confidence: 95 // תוקן ל-confidence
+      isResolved: false, 
+      confidence: 95 
     },
     {
       _id: "alert_002",
@@ -56,8 +57,8 @@ function DispatcherDashboard() {
       distanceFromCrosswalk: 0,
       imageUrl: "",
       timestamp: "2026-06-03T11:15:00Z",
-      status: "in-progress",
-      confidence: 60 // תוקן ל-confidence
+      isResolved: true,
+      confidence: 60 
     }
   ]);
 
@@ -66,6 +67,7 @@ function DispatcherDashboard() {
       setIsLoading(false);
     }, 1500);
 
+    // תואם לדרישות שלהם
     const socket = io('http://localhost:3000'); 
 
     socket.on('newAlert', (newAlertData) => {
@@ -80,9 +82,10 @@ function DispatcherDashboard() {
     navigate('/');
   };
 
-  const handleStatusChange = (alertId, newStatus) => {
+  // פונקציה שמחליפה מצב בוליאני במקום טקסט
+  const handleToggleResolved = (alertId) => {
     setAlerts(alerts.map(alert => 
-      alert._id === alertId ? { ...alert, status: newStatus } : alert
+      alert._id === alertId ? { ...alert, isResolved: !alert.isResolved } : alert
     ));
   };
 
@@ -97,13 +100,6 @@ function DispatcherDashboard() {
     const alertDate = alert.timestamp.split('T')[0];
     return alertDate === filterDate;
   });
-
-  const getStatusStyle = (status) => {
-    if (status === 'pending') return 'bg-red-100 text-red-800 border-red-300';
-    if (status === 'in-progress') return 'bg-yellow-100 text-yellow-800 border-yellow-300';
-    if (status === 'resolved') return 'bg-green-100 text-green-800 border-green-300';
-    return 'bg-gray-100 text-gray-800 border-gray-300';
-  };
 
   const getSeverityBadge = (severity) => {
     const s = severity?.toLowerCase();
@@ -267,7 +263,8 @@ function DispatcherDashboard() {
                         )}
                     </div>
                     <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                      {filteredAlerts.filter(a => a.status === 'pending').length} ממתינות
+                      {/* ספירת ההתרעות שלא טופלו */}
+                      {filteredAlerts.filter(a => !a.isResolved).length} ממתינות
                     </span>
                 </div>
             </div>
@@ -302,7 +299,7 @@ function DispatcherDashboard() {
                         </thead>
                         <tbody className="divide-y divide-slate-100">
                             {filteredAlerts.map((alert) => (
-                                <tr key={alert._id} className="hover:bg-slate-50 transition">
+                                <tr key={alert._id} className={`hover:bg-slate-50 transition ${alert.isResolved ? 'opacity-70 bg-slate-50' : ''}`}>
                                     <td className="p-4 font-mono text-slate-600 whitespace-nowrap text-sm">
                                         <div>{formatDateDisplay(alert.timestamp)}</div>
                                         <div className="text-slate-400">{formatTime(alert.timestamp)}</div>
@@ -312,7 +309,6 @@ function DispatcherDashboard() {
                                     <td className="p-4 whitespace-nowrap">
                                         {alert.personType ? (
                                             <div className="flex flex-col gap-1">
-                                                {/* תוקן ל-confidence */}
                                                 <span className={`text-xs px-2 py-1 rounded-full font-bold w-fit ${alert.confidence > 90 ? 'bg-red-600 text-white animate-pulse' : 'bg-orange-200 text-orange-800'}`}>
                                                     {alert.confidence || '0'}% ביטחון
                                                 </span>
@@ -335,15 +331,17 @@ function DispatcherDashboard() {
                                         </div>
                                     </td>
                                     <td className="p-4 whitespace-nowrap">
-                                        <select 
-                                          value={alert.status || 'pending'}
-                                          onChange={(e) => handleStatusChange(alert._id, e.target.value)}
-                                          className={`font-bold px-2 py-1 rounded outline-none cursor-pointer border text-sm ${getStatusStyle(alert.status || 'pending')}`}
+                                        {/* כפתור בוליאני במקום רשימה נפתחת */}
+                                        <button 
+                                          onClick={() => handleToggleResolved(alert._id)}
+                                          className={`font-bold px-3 py-1 rounded shadow-sm border text-sm transition ${
+                                            alert.isResolved 
+                                                ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200' 
+                                                : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200'
+                                          }`}
                                         >
-                                          <option value="pending">🔴 טרם טופל</option>
-                                          <option value="in-progress">🟡 בטיפול</option>
-                                          <option value="resolved">🟢 טופל</option>
-                                        </select>
+                                          {alert.isResolved ? '🟢 טופל' : '🔴 טרם טופל'}
+                                        </button>
                                     </td>
                                     <td className="p-4 whitespace-nowrap">
                                         {alert.imageUrl ? (
