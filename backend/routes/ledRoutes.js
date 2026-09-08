@@ -9,12 +9,14 @@
  * HTTP endpoints for the road LEDs (mounted at /api/leds).
  *   POST /                  -> create an LED record
  *   GET  /?crosswalkId=cw_1 -> list LEDs from the DB, optionally filtered
+ *   PUT  /:id               -> update an LED by its code (e.g. status On/Off)
  */
 import express from 'express';  // Web framework for Node.js
 import {
     createLed,
     fetchAllLeds,
     fetchLedsByCrosswalk,
+    updateLed,
 } from '../services/ledService.js';
 
 const router = express.Router();
@@ -39,6 +41,19 @@ router.get('/', async (req, res) => {
         res.json(leds);
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+});
+
+// PUT /api/leds/:id - update an LED by its code (e.g. { "status": "On" }).
+router.put('/:id', async (req, res) => {
+    try {
+        const updated = await updateLed(req.params.id, req.body);
+        if (!updated) {
+            return res.status(404).json({ message: 'LED not found' });
+        }
+        res.json(updated);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
     }
 });
 

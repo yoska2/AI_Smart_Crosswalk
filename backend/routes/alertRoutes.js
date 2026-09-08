@@ -7,11 +7,12 @@
  * routes/alertRoutes.js
  * ---------------------
  * HTTP endpoints for alerts (mounted at /api/alerts).
- *   POST /  -> create a new alert (used by the AI node)
- *   GET  /  -> list all alerts from the database (newest first)
+ *   POST   /     -> create a new alert (used by the AI node)
+ *   GET    /     -> list all alerts from the database (newest first)
+ *   PUT    /:id  -> update an alert (e.g. mark resolved)
  */
 import express from 'express';
-import { createAlert, fetchAllAlerts } from '../services/alertService.js';
+import { createAlert, fetchAllAlerts, updateAlert } from '../services/alertService.js';
 
 const router = express.Router();
 
@@ -32,6 +33,19 @@ router.get('/', async (req, res) => {
         res.json(alerts);
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+});
+
+// PUT /api/alerts/:id - update an alert (e.g. { "isResolved": true }).
+router.put('/:id', async (req, res) => {
+    try {
+        const updated = await updateAlert(req.params.id, req.body);
+        if (!updated) {
+            return res.status(404).json({ message: 'Alert not found' });
+        }
+        res.json(updated);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
     }
 });
 

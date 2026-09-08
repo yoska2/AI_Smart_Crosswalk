@@ -7,11 +7,12 @@
  * routes/crosswalkRoutes.js
  * -------------------------
  * HTTP endpoints for crosswalks (mounted at /api/crosswalks).
- *   POST /  -> create a crosswalk
- *   GET  /  -> list all crosswalks from the database
+ *   POST   /     -> create a crosswalk
+ *   GET    /     -> list all crosswalks from the database
+ *   PUT    /:id  -> update a crosswalk (equipment / status)
  */
 import express from 'express';
-import { createCrosswalk, fetchAllCrosswalks } from '../services/crosswalkService.js';
+import { createCrosswalk, fetchAllCrosswalks, updateCrosswalk } from '../services/crosswalkService.js';
 
 const router = express.Router();
 
@@ -32,6 +33,19 @@ router.get('/', async (req, res) => {
         res.json(crosswalks);
     } catch (error) {
         res.status(500).json({ message: error.message });
+    }
+});
+
+// PUT /api/crosswalks/:id - update a crosswalk (e.g. { "isActive": false }).
+router.put('/:id', async (req, res) => {
+    try {
+        const updated = await updateCrosswalk(req.params.id, req.body);
+        if (!updated) {
+            return res.status(404).json({ message: 'Crosswalk not found' });
+        }
+        res.json(updated);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
     }
 });
 

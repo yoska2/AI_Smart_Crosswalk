@@ -62,17 +62,92 @@ const login = async (req, res) => {
             return res.status(401).json({ message: "Invalid email or password" });
         }
 
+        // Suspended accounts cannot log in.
+        if (user.status === "suspended") {
+            return res.status(403).json({ message: "Account is suspended" });
+        }
+
         // Sign a token valid for 24h (uses JWT_SECRET from .env).
+        // role is embedded so protected routes can do role checks (req.user.role).
         const token = jwt.sign(
-            { userId: user._id },
+            { userId: user._id, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: "24h" }
         );
 
-        return res.status(200).json({ token });
+        // Return role (+ username) so the frontend can route to the right dashboard.
+        return res.status(200).json({ token, role: user.role, username: user.username });
     } catch (error) {
         return res.status(500).json({ message: error.message });
     }
 };
 
-export default { register: register, login: login };
+// --- Admin user management (CRUD) ---
+// All three are Admin-only; wrap the routes with authMiddleware, and each
+// method also checks req.user.role === 'Admin' as a second guard.
+
+// GET /api/users - list all users (never returns passwordHash).
+const getAllUsers = async (req, res) => {
+    try {
+        if (req.user.role !== "Admin") {
+            return res.status(403).json({ message: "Admin only" });
+        }
+        const users = await User.find().select("-passwordHash");
+        return res.status(200).json(users);
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+// PUT /api/users/:id - update a user's role/status/username/email.
+// Password changes are intentionally NOT handled here.
+const updateUser = async (req, res) => {
+    try {
+        if (req.user.role !== "Admin") {
+            return res.status(403).json({ message: "Admin only" });
+        }
+        // Only allow safe fields to be updated (never passwordHash directly).
+        const { role, status, username, email } = req.body;
+        const updates = {};
+        if (role !== undefined) updates.role = role;
+        if (status !== undefined) updates.status = status;
+        if (username !== undefined) updates.username = username;
+        if (email !== undefined) updates.email = email;
+
+        const updated = await User.findByIdAndUpdate(req.params.id, updates, {
+            new: true,            // return the document after the update
+            runValidators: true,  // enforce the schema enums (role/status)
+        }).select("-passwordHash");
+
+        if (!updated) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        return res.status(200).json(updated);
+    } catch (error) {
+        return res.status(400).json({ message: error.message });
+    }
+};
+
+// DELETE /api/users/:id - remove a user.
+const deleteUser = async (req, res) => {
+    try {
+        if (req.user.role !== "Admin") {
+            return res.status(403).json({ message: "Admin only" });
+        }
+        const deleted = await User.findByIdAndDelete(req.params.id);
+        if (!deleted) {
+            return res.status(404).json({ message: "User not found" });
+        }
+        return res.status(200).json({ message: "User deleted" });
+    } catch (error) {
+        return res.status(500).json({ message: error.message });
+    }
+};
+
+export default {
+    register: register,
+    login: login,
+    getAllUsers: getAllUsers,
+    updateUser: updateUser,
+    deleteUser: deleteUser,
+};

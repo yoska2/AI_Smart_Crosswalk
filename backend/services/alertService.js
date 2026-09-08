@@ -31,3 +31,13 @@ export const createAlert = async (alertData) => {
 export const fetchAllAlerts = async () => {
     return await Alert.find().sort({ timestamp: -1 });
 };
+
+// Update an alert by id (e.g. an operator marks it resolved).
+// Partial update: only the fields sent in the body are changed.
+// Returns the updated document, or null if the id was not found.
+export const updateAlert = async (id, updates) => {
+    return await Alert.findByIdAndUpdate(id, updates, {
+        new: true,            // return the document after the update
+        runValidators: true,  // enforce schema enums (e.g. severity)
+    });
+};

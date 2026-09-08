@@ -21,3 +21,13 @@ export const createCrosswalk = async (crosswalkData) => {
 export const fetchAllCrosswalks = async () => {
     return await Crosswalk.find();
 };
+
+// Update a crosswalk by id (e.g. a technician toggles isActive / equipment).
+// Partial update: only the fields sent in the body are changed.
+// Returns the updated document, or null if the id was not found.
+export const updateCrosswalk = async (id, updates) => {
+    return await Crosswalk.findByIdAndUpdate(id, updates, {
+        new: true,            // return the document after the update
+        runValidators: true,
+    });
+};

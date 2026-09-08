@@ -18,6 +18,8 @@ const crosswalkSchema = new mongoose.Schema({
     areaId: { type: String },                     // area/zone code, e.g. "area_holon_01"
     areaName: { type: String },                   // area name, e.g. "מרכז העיר"
     location: { type: String, required: true },   // street address, e.g. "הרצל 45, חולון"
+    lat: { type: Number },                        // latitude  (frontend map marker)
+    lng: { type: Number },                        // longitude (frontend map marker)
     city: { type: String },                       // city name, e.g. "חולון"
     ledCommandUrl: { type: String },              // URL that activates this crosswalk's LEDs
     isActive: { type: Boolean, default: true },   // is the crosswalk currently operational

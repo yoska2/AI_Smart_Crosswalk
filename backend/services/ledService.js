@@ -26,3 +26,13 @@ export const fetchAllLeds = async () => {
 export const fetchLedsByCrosswalk = async (crosswalkId) => {
     return await LED.find({ crosswalkId });
 };
+
+// Update an LED by its code (the `id` field, e.g. "led_101") - NOT Mongo's _id.
+// Partial update; also refreshes lastUpdated. Returns null if not found.
+export const updateLed = async (id, updates) => {
+    return await LED.findOneAndUpdate(
+        { id },
+        { ...updates, lastUpdated: Date.now() },
+        { new: true, runValidators: true }
+    );
+};

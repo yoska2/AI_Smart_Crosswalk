@@ -27,3 +27,13 @@ export const fetchAllCameras = async () => {
 export const fetchCamerasByCrosswalk = async (crosswalkId) => {
     return await Camera.find({ crosswalkId });
 };
+
+// Update a camera by its code (the `id` field, e.g. "cam_101") - NOT Mongo's _id.
+// Partial update; also refreshes lastUpdated. Returns null if not found.
+export const updateCamera = async (id, updates) => {
+    return await Camera.findOneAndUpdate(
+        { id },
+        { ...updates, lastUpdated: Date.now() },
+        { new: true, runValidators: true }
+    );
+};
