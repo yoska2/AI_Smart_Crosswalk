@@ -1,4 +1,5 @@
-# PROVENANCE: [RACHE] your config, trimmed for images-only.
+# PROVENANCE: [RACHE] your config, trimmed for images-only. [LIEL] video / tracking / risk-rule
+#             settings added in the section at the bottom (the risk rules run HERE, in the AI service).
 # ============================================================
 # SANDBOX FILE - TRIMMED for images-only (was your vision/config.py).
 # REMOVED (video/drawing, not needed for images): VIDEO_SOURCE, PROCESS_WIDTH,
@@ -37,3 +38,65 @@ ALERT_COOLDOWN_SECONDS = 1.0
 # --- Alert identity (belongs to the backend under Option B) ---
 CROSSWALK_ID = "cw_001"
 CAMERA_ID = "cam_101"
+
+
+# ============================================================
+# [LIEL] Sprint 4 point 1 - VIDEO analysis + 12-case risk classification.
+# Decision (lecturer, 13.9): no live cameras yet, analyse a VIDEO FILE; a video
+# is a sequence of frames. The risk "brain" runs HERE in the AI service
+# (video_processor.py -> tracker.py -> risk_rules.py -> alert_sender.py) and
+# sends a READY alert to Rachel's existing POST /api/alerts.
+# Every number below is a starting point for tuning, not a measured truth.
+# ============================================================
+
+# --- Video source (video_processor.py) ---
+VIDEO_SOURCE = "samples/clip1.mp4"   # file path, or an int webcam index. CLI: python main.py --source ...
+PROCESS_WIDTH = 960                  # downscale frames to this width before YOLO (Rachel's Sprint 3 value)
+PROCESS_EVERY_N_FRAMES = 3           # analyse 1 of every N frames (CPU inference ~100-200 ms/frame)
+SHOW_WINDOW = False                  # True = draw boxes/zone and open a window (needs a desktop). CLI: --show
+WINDOW_NAME = "Smart Crosswalk - Video Analysis"
+
+# --- Tracking (tracker.py): give every person a stable id across frames ---
+TRACKER = "simple"                   # "simple" = our matcher (no extra deps) | "yolo" = ultralytics ByteTrack
+TRACK_MAX_GAP_SECONDS = 0.5          # a person missing longer than this is a NEW track
+TRACK_MATCH_SPEED_H_PER_S = 6.0      # matching gate: max plausible movement per second, in body heights (running ~2-4)
+TRACK_MIN_GATE_PX = 20               # ...but never tighter than this many pixels (tiny boxes / jitter)
+TRACK_SIZE_RATIO = (0.6, 1.7)        # box-height ratio between consecutive matches must stay in this range
+TRUNCATION_MARGIN = 0.02             # box touching a frame border (within 2% of frame) => 'truncated'
+MIN_PERSON_HEIGHT_PX = 40            # smaller boxes are ignored (jitter would look like motion)
+DUPLICATE_IOU = 0.7                  # two person boxes overlapping more than this = one person
+
+# --- Risk rules (risk_rules.py). Distances are in units of BODY HEIGHT h ---
+# The edge zone = config.ROI_POLYGON_NORM above (Rachel's polygon, per-camera calibration later).
+# dist > 0 : outside the zone (on the sidewalk), dist <= 0 : inside the zone (at/over the curb).
+RISK_WINDOW_SECONDS = 2.0            # kinematics are measured over the last N seconds of a track
+MIN_WINDOW_SECONDS = 0.5             # need at least this much history before judging motion (jitter at 25 fps)
+RECENT_SECONDS = 0.5                 # "standing" is decided on the last 0.5 s, so LEDs stop when the person stops
+STEP_LOOKBACK_SECONDS = 0.5          # "stepping down" looks at the last 0.5 s, not at a single frame pair
+MIN_MOVE_H = 0.1                     # net displacement below this (h) is box jitter, not movement
+EDGE_JITTER = 0.1                    # feet within +-0.1 h of the curb line still count as "on the line"
+NEAR = 0.5                           # "at the edge" (static rules)                         ~0.5 body height
+NEAR_APPROACH = 1.2                  # "very close" for M1 continuous approach              ~1.2 body heights
+FAR = 1.5                            # phone rule (M2) only matters within this distance
+MOVING_MIN = 0.15                    # below this (h/s) a person is "standing" (box jitter is ~0.05 h/s)
+RUN_MIN = 2.0                        # at/above this speed (h/s) = running / bursting (H1)
+TTE_MEDIUM = 2.0                     # time-to-edge (s) at walking pace => Medium (M1) even if not yet "very close"
+PARALLEL_RATIO = 0.3                 # |approach| < 0.3 * speed => moving parallel to the road
+PHONE_MAX_DIST = 0.35                # phone centre within 0.35 h of the chest point => "holding a phone"
+PHONE_MIN_FRACTION = 0.5             # phone seen in >= 50% of the window frames (and >= PHONE_MIN_FRAMES)
+PHONE_MIN_FRAMES = 2
+CHILD_HEIGHT_RATIO = 0.8             # h < 0.8 x adult reference height => child (1.4 m / 1.75 m)
+ADULT_HEIGHT_REF = None              # optional per-camera calibration: [(y_feet_norm, h_norm), (y_feet_norm, h_norm)]
+GROUP_MIN = 3                        # M3: at least this many people approaching together
+SUDDEN_MAX_AGE_SECONDS = 0.6         # H4: track younger than this AND already near AND approaching
+METERS_PER_H = None                  # per-camera: metres per body-height unit. None => metre fields sent as null
+
+# --- Alerts to the Node backend (alert_sender.py, port of Rachel's Sprint 3 alert_service.py) ---
+API_URL = "http://localhost:3000/api/alerts"   # Rachel's createAlert: uploads image, saves, pushes via Socket.io
+API_TIMEOUT_SECONDS = 5
+API_ENABLED = True                   # False = analyse only, print events, no HTTP
+MIN_FRAMES_FOR_ALERT = 3             # a person must be seen in >= 3 analysed frames before any alert (motion + phone need history)
+LOW_REPEAT_SECONDS = 10.0            # same Low case for the same person is re-sent at most every 10 s
+ALERT_REPEAT_SECONDS = 3.0           # same Medium/High case for the same person: at most every 3 s
+CASE_CHANGE_SECONDS = 1.0            # a DIFFERENT case at the same level (e.g. M1 -> M4) is sent after 1 s
+SNAPSHOT_JPEG_QUALITY = 70
