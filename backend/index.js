@@ -1,6 +1,6 @@
-// PROVENANCE: [RACHE] your entry (http+socket.io+change-stream). PENDING: add Yossef's 1 mount line.
+// PROVENANCE: [RACHE] your entry (http+socket.io+change-stream). [LIEL] added Yossef's detect mount (/api/detect) for Sprint 4 point 1.
 /* ============================================================
- * SANDBOX FILE - PENDING MERGE (the hard one). This is YOUR index.js (http server + Socket.io + change stream + your routes + userRoutes). Yossef's index.js also starts the Python process on boot and mounts his routes. TODO: reconcile into ONE entry file here.
+ * SANDBOX FILE - PENDING MERGE (the hard one). This is YOUR index.js (http server + Socket.io + change stream + your routes + userRoutes). Yossef's index.js also starts the Python process on boot and mounts his routes. The Python process is NOT started here (the AI service runs on its own: see ai-service/README.md); only the mount line was added.
  * ============================================================ */
 
 /**
@@ -15,6 +15,7 @@
  * Data flow: AI node -> POST /api/alerts -> saved in DB -> change stream ->
  * Socket.io "newAlert" -> frontend updates live.
  */
+import 'dotenv/config';                                  // load .env BEFORE any module reads process.env
 import express from 'express';
 import http from 'http';
 import dotenv from 'dotenv';
@@ -25,6 +26,7 @@ import crosswalkRoutes from './routes/crosswalkRoutes.js';
 import cameraRoutes from './routes/cameraRoutes.js';
 import ledRoutes from './routes/ledRoutes.js';
 import userRoutes from './routes/userRoutes.js';        // auth (from yosi-B1)
+import detectRoutes from './routes/detectRoutes.js';    // AI service bridge (single image)
 import { initSocket, watchAlerts } from './config/socket.js';
 
 dotenv.config();
@@ -54,6 +56,7 @@ app.use('/api/crosswalks', crosswalkRoutes);
 app.use('/api/cameras', cameraRoutes);
 app.use('/api/leds', ledRoutes);
 app.use('/api/users', userRoutes);        // register + login
+app.use('/api/detect', detectRoutes);     // POST /  (one image -> detections), Yossef's route, was never mounted
 
 // Start listening
 server.listen(PORT, () => {
