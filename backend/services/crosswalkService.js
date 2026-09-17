@@ -17,9 +17,16 @@ export const createCrosswalk = async (crosswalkData) => {
     return await newCrosswalk.save();
 };
 
-// Return every crosswalk in the DB.
+// Return every crosswalk with its cameras and LEDs embedded (statuses included).
+// One aggregation instead of 3 calls: $lookup joins on the crosswalk code
+// (_id "cw_001") against each device's crosswalkId. The frontend gets a single
+// unified object per crosswalk. NOTE: the `cameras` string array is replaced by
+// the full camera documents.
 export const fetchAllCrosswalks = async () => {
-    return await Crosswalk.find();
+    return await Crosswalk.aggregate([
+        { $lookup: { from: 'cameras', localField: '_id', foreignField: 'crosswalkId', as: 'cameras' } },
+        { $lookup: { from: 'leds', localField: '_id', foreignField: 'crosswalkId', as: 'leds' } },
+    ]);
 };
 
 // Update a crosswalk by id (e.g. a technician toggles isActive / equipment).
@@ -27,7 +34,7 @@ export const fetchAllCrosswalks = async () => {
 // Returns the updated document, or null if the id was not found.
 export const updateCrosswalk = async (id, updates) => {
     return await Crosswalk.findByIdAndUpdate(id, updates, {
-        new: true,            // return the document after the update
+        returnDocument: 'after', // return the document after the update
         runValidators: true,
     });
 };

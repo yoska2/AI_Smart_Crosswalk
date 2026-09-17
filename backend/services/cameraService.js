@@ -34,6 +34,6 @@ export const updateCamera = async (id, updates) => {
     return await Camera.findOneAndUpdate(
         { id },
         { ...updates, lastUpdated: Date.now() },
-        { new: true, runValidators: true }
+        { returnDocument: 'after', runValidators: true }
     );
 };

@@ -33,6 +33,6 @@ export const updateLed = async (id, updates) => {
     return await LED.findOneAndUpdate(
         { id },
         { ...updates, lastUpdated: Date.now() },
-        { new: true, runValidators: true }
+        { returnDocument: 'after', runValidators: true }
     );
 };

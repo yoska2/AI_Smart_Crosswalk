@@ -37,7 +37,7 @@ export const fetchAllAlerts = async () => {
 // Returns the updated document, or null if the id was not found.
 export const updateAlert = async (id, updates) => {
     return await Alert.findByIdAndUpdate(id, updates, {
-        new: true,            // return the document after the update
-        runValidators: true,  // enforce schema enums (e.g. severity)
+        returnDocument: 'after', // return the document after the update
+        runValidators: true,     // enforce schema enums (e.g. severity)
     });
 };

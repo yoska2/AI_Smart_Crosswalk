@@ -44,7 +44,8 @@ connectDB().then(() => {
 const PORT = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors());                          // allow the frontend (any origin in dev) to call us
+// Dev: any origin. Prod: set FRONTEND_URL in the env to lock it to the frontend origin.
+app.use(cors({ origin: process.env.FRONTEND_URL || '*' }));
 app.use(express.json({ limit: '10mb' })); // parse JSON bodies; 10mb so base64 images fit
 
 // REST routes

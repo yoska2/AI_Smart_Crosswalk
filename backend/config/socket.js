@@ -22,7 +22,8 @@ let io = null;
 // Attach Socket.io to the shared HTTP server.
 export const initSocket = (httpServer) => {
     io = new Server(httpServer, {
-        cors: { origin: '*' }, // TODO: restrict to the frontend origin in production
+        // Dev: open to all. Prod: set FRONTEND_URL in the env to lock it to the frontend origin.
+        cors: { origin: process.env.FRONTEND_URL || '*' },
     });
 
     io.on('connection', (socket) => {
@@ -51,8 +52,14 @@ export const watchAlerts = () => {
 
         changeStream.on('change', (change) => {
             if (change.operationType === 'insert') {
+                // A brand-new alert from the AI -> push to all clients.
                 getIO().emit('newAlert', change.fullDocument);
                 console.log(`Live: emitted newAlert ${change.fullDocument?._id}`);
+            } else if (change.operationType === 'update' || change.operationType === 'replace') {
+                // An existing alert changed (e.g. an operator set isResolved) ->
+                // push the updated doc so other screens stay in sync live.
+                getIO().emit('alertUpdated', change.fullDocument);
+                console.log(`Live: emitted alertUpdated ${change.fullDocument?._id}`);
             }
         });
 
