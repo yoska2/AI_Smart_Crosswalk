@@ -67,7 +67,6 @@ function DispatcherDashboard() {
       setIsLoading(false);
     }, 1500);
 
-    // תואם לדרישות שלהם
     const socket = io('http://localhost:3000'); 
 
     socket.on('newAlert', (newAlertData) => {
