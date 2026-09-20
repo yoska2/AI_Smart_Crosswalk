@@ -3,25 +3,21 @@ import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import crosswalksData from '../data/crosswalks.json';
 
-// תיקון תצוגת האייקון של המפה
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
 function TechnicianDashboard() {
   const navigate = useNavigate();
 
-  const [faultyCrosswalks, setFaultyCrosswalks] = useState(
-    crosswalksData.filter(cw => cw.cameraStatus === 'offline' || cw.ledStatus === 'offline' || !cw.isActive)
-  );
+  const [faultyCrosswalks, setFaultyCrosswalks] = useState([]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -30,7 +26,6 @@ function TechnicianDashboard() {
 
   const handleFixHardware = (id) => {
     setFaultyCrosswalks(faultyCrosswalks.filter(cw => cw._id !== id));
-    // כאן בעתיד תתווסף קריאת PUT לשרת לעדכון הסטטוס ל-Online
   };
 
   return (
@@ -78,7 +73,6 @@ function TechnicianDashboard() {
 
         <div className="flex flex-col gap-6 flex-1">
 
-          {/* מפת התקלות - שילוב של Leaflet */}
           {faultyCrosswalks.length > 0 && (
             <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden h-64 shrink-0 flex flex-col">
               <div className="bg-slate-50 p-2 border-b border-slate-200 font-bold text-slate-700 text-sm">
@@ -111,7 +105,6 @@ function TechnicianDashboard() {
             </div>
           )}
 
-          {/* טבלת קריאות השירות */}
           <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col flex-1 overflow-hidden">
               <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center">
                   <span>🛠️ סידור עבודה - צמתים לתיקון</span>
@@ -153,7 +146,6 @@ function TechnicianDashboard() {
                                   <td className="p-4 text-sm text-slate-600">{cw.lastMaintenance}</td>
                                   <td className="p-4 text-center">
                                       <div className="flex items-center justify-center gap-2">
-                                          {/* לינק ישיר לווייז! */}
                                           {cw.lat && cw.lng && (
                                             <a 
                                                 href={`https://waze.com/ul?ll=${cw.lat},${cw.lng}&navigate=yes`}

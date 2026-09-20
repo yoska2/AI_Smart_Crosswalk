@@ -4,15 +4,7 @@ import { useNavigate } from 'react-router-dom';
 function AdminDashboard() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-
-  const [users, setUsers] = useState([
-    { id: 'U-001', name: 'ישראל ישראלי', username: 'admin', role: 'Admin', status: 'active', lastLogin: '2026-07-02 08:30' },
-    { id: 'U-002', name: 'אבי מנהל', username: 'manager', role: 'Manager', status: 'active', lastLogin: '2026-07-02 09:15' },
-    { id: 'U-003', name: 'דניאל כהן', username: 'dispatcher1', role: 'Dispatcher', status: 'active', lastLogin: '2026-07-02 14:10' },
-    { id: 'U-004', name: 'רונית לוי', username: 'dispatcher2', role: 'Dispatcher', status: 'active', lastLogin: '2026-07-02 15:00' },
-    { id: 'U-005', name: 'משה קבלן', username: 'tech', role: 'Technician', status: 'active', lastLogin: '2026-07-01 10:20' },
-    { id: 'U-006', name: 'יעל שגיא', username: 'yaels', role: 'Dispatcher', status: 'suspended', lastLogin: '2026-06-15 11:45' },
-  ]);
+  const [users, setUsers] = useState([]);
 
   const handleLogout = () => {
     localStorage.removeItem('token');

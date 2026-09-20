@@ -4,16 +4,15 @@ import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import crosswalksData from '../data/crosswalks.json';
 
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
 
 let DefaultIcon = L.icon({
-    iconUrl: icon,
-    shadowUrl: iconShadow,
-    iconSize: [25, 41],
-    iconAnchor: [12, 41]
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
 });
 L.Marker.prototype.options.icon = DefaultIcon;
 
@@ -26,41 +25,8 @@ function DispatcherDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterDate, setFilterDate] = useState('');
 
-  // עדכנו את נתוני הדמה כך שיכילו isResolved במקום status
-  const [alerts, setAlerts] = useState([
-    {
-      _id: "alert_001",
-      cameraId: "cam_101",
-      crosswalkId: "CW-882",
-      location: "צומת הופיין / גולומב",
-      areaId: "AREA-HLN-C",
-      areaName: "חולון מרכז",
-      severity: "High",
-      description: "הולך רגל זוהה על הכביש באור אדום",
-      personType: "adult",
-      distanceFromCrosswalk: 0.5,
-      imageUrl: "https://res.cloudinary.com/demo/image/upload/v1312461204/sample.jpg",
-      timestamp: "2026-06-03T08:30:00Z",
-      isResolved: false, 
-      confidence: 95 
-    },
-    {
-      _id: "alert_002",
-      cameraId: "cam_201",
-      crosswalkId: "CW-105",
-      location: "סוקולוב / קראוזה",
-      areaId: "AREA-HLN-C",
-      areaName: "חולון מרכז",
-      severity: "Medium",
-      description: "רכב נעצר על קו מעבר החצייה",
-      personType: "unknown",
-      distanceFromCrosswalk: 0,
-      imageUrl: "",
-      timestamp: "2026-06-03T11:15:00Z",
-      isResolved: true,
-      confidence: 60 
-    }
-  ]);
+  const [alerts, setAlerts] = useState([]);
+  const [crosswalksData, setCrosswalksData] = useState([]);
 
   useEffect(() => {
     setTimeout(() => {
@@ -81,7 +47,6 @@ function DispatcherDashboard() {
     navigate('/');
   };
 
-  // פונקציה שמחליפה מצב בוליאני במקום טקסט
   const handleToggleResolved = (alertId) => {
     setAlerts(alerts.map(alert => 
       alert._id === alertId ? { ...alert, isResolved: !alert.isResolved } : alert
@@ -262,7 +227,6 @@ function DispatcherDashboard() {
                         )}
                     </div>
                     <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
-                      {/* ספירת ההתרעות שלא טופלו */}
                       {filteredAlerts.filter(a => !a.isResolved).length} ממתינות
                     </span>
                 </div>
@@ -330,7 +294,6 @@ function DispatcherDashboard() {
                                         </div>
                                     </td>
                                     <td className="p-4 whitespace-nowrap">
-                                        {/* כפתור בוליאני במקום רשימה נפתחת */}
                                         <button 
                                           onClick={() => handleToggleResolved(alert._id)}
                                           className={`font-bold px-3 py-1 rounded shadow-sm border text-sm transition ${

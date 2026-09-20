@@ -1,23 +1,14 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import crosswalksData from '../data/crosswalks.json';
 
 function CrosswalkDetails() {
   const { id } = useParams(); 
   const navigate = useNavigate();
   
-  const crosswalk = crosswalksData.find(cw => cw._id === id);
-
+  const [crosswalk, setCrosswalk] = useState(null);
   const [filterDate, setFilterDate] = useState('');
+  const [historyEvents, setHistoryEvents] = useState([]);
 
-  const [historyEvents] = useState([
-    { _id: 'hist_1', date: '2026-07-01', time: '14:30', description: 'הולך רגל חצה באדום', severity: 'high', image: 'https://via.placeholder.com/150' },
-    { _id: 'hist_2', date: '2026-07-01', time: '09:15', description: 'רכב חסם מעבר חציה', severity: 'medium', image: 'https://via.placeholder.com/150' },
-    { _id: 'hist_3', date: '2026-06-28', time: '18:45', description: 'עומס חריג', severity: 'low', image: '' },
-    { _id: 'hist_4', date: '2026-06-25', time: '22:10', description: 'רוכב קורקינט כמעט ונפגע', severity: 'high', image: 'https://via.placeholder.com/150' },
-  ]);
-
-  // סינון האירועים לפי התאריך שנבחר
   const filteredEvents = historyEvents.filter(event => {
     if (!filterDate) return true;
     return event.date === filterDate;
@@ -41,7 +32,6 @@ function CrosswalkDetails() {
   return (
     <div className="min-h-screen bg-slate-100 p-8 font-sans" dir="rtl">
       
-      {/* כותרת עליונה וכפתור חזרה */}
       <div className="max-w-5xl mx-auto mb-6 flex justify-between items-center">
         <div>
             <h1 className="text-3xl font-bold text-slate-800">תיק צומת: {crosswalk.location}</h1>
@@ -57,7 +47,6 @@ function CrosswalkDetails() {
 
       <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-3 gap-6">
         
-        {/* כרטיסיית סטטוס חומרה */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-slate-200 md:col-span-1 h-fit">
             <h2 className="text-xl font-bold text-slate-700 mb-4 border-b pb-2">סטטוס ציוד מנטר</h2>
             <div className="flex flex-col gap-4">
@@ -84,12 +73,10 @@ function CrosswalkDetails() {
             </div>
         </div>
 
-        {/* אזור היסטוריית אירועים מסוכנים */}
         <div className="bg-white p-6 rounded-xl shadow-md border border-slate-200 md:col-span-2">
             <div className="flex justify-between items-center mb-4 border-b pb-2">
                 <h2 className="text-xl font-bold text-slate-700">היסטוריית אירועים מסוכנים</h2>
                 
-                {/* סינון תאריכים  */}
                 <div className="flex items-center gap-2">
                     <label className="text-sm text-slate-500">סנן תאריך:</label>
                     <input 
@@ -124,7 +111,6 @@ function CrosswalkDetails() {
                                 <td className="py-3 px-4">{getSeverityBadge(ev.severity)}</td>
                                 <td className="py-3 px-4 font-bold text-slate-700">{ev.description}</td>
                                 <td className="py-3 px-4">
-                                    {/* Placeholder לתמונה כפי שנדרש  */}
                                     {ev.image ? (
                                         <div className="flex items-center gap-2">
                                             <span className="text-xs text-blue-600 underline cursor-pointer">צפה בתמונה</span>
