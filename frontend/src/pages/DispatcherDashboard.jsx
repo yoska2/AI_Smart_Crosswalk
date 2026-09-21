@@ -67,15 +67,15 @@ function DispatcherDashboard() {
 
   const getSeverityBadge = (severity) => {
     const s = severity?.toLowerCase();
-    if (s === 'high') return <span className="bg-red-100 text-red-800 px-2 py-1 rounded font-bold text-xs border border-red-200">🔴 קריטי</span>;
-    if (s === 'medium') return <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded font-bold text-xs border border-orange-200">🟠 בינוני</span>;
-    return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold text-xs border border-blue-200">🔵 נמוך</span>;
+    if (s === 'high') return <span className="bg-red-100 text-red-800 px-2 py-1 rounded font-bold text-xs border border-red-200 whitespace-nowrap">🔴 קריטי</span>;
+    if (s === 'medium') return <span className="bg-orange-100 text-orange-800 px-2 py-1 rounded font-bold text-xs border border-orange-200 whitespace-nowrap">🟠 בינוני</span>;
+    return <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold text-xs border border-blue-200 whitespace-nowrap">🔵 נמוך</span>;
   };
 
   const getCrosswalkStatusBadge = (status, isActive) => {
-    if (isActive || status === 'active') return <span className="text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200 text-xs font-bold">פעיל</span>;
-    if (status === 'warning') return <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-200 text-xs font-bold">תקלה</span>;
-    return <span className="text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-300 text-xs font-bold">מנותק</span>;
+    if (isActive || status === 'active') return <span className="text-green-600 bg-green-50 px-2 py-1 rounded border border-green-200 text-xs font-bold whitespace-nowrap">פעיל</span>;
+    if (status === 'warning') return <span className="text-orange-600 bg-orange-50 px-2 py-1 rounded border border-orange-200 text-xs font-bold whitespace-nowrap">תקלה</span>;
+    return <span className="text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-300 text-xs font-bold whitespace-nowrap">מנותק</span>;
   };
 
   const formatTime = (isoString) => {
@@ -91,52 +91,54 @@ function DispatcherDashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-100 font-sans" dir="rtl">
-      <aside className="w-64 bg-slate-800 text-white p-6 flex flex-col justify-between shadow-xl z-10 shrink-0">
+    <div className="flex flex-col md:flex-row h-screen bg-slate-100 font-sans" dir="rtl">
+      {/* תפריט צד מותאם למובייל - הופך לתפריט עליון במסכים קטנים */}
+      <aside className="w-full md:w-64 bg-slate-800 text-white p-4 md:p-6 flex flex-col md:justify-between shadow-xl z-20 shrink-0 md:h-full">
         <div>
-          <h1 className="text-2xl font-bold mb-8 text-center border-b border-slate-700 pb-4">
+          <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-8 text-center border-b border-slate-700 pb-4">
             SafeCross 🚦
           </h1>
-          <nav className="flex flex-col gap-3 text-slate-300">
-            <button className="text-right hover:text-white bg-slate-700 p-3 rounded font-medium transition shadow-sm border border-slate-600">
+          <nav className="flex flex-row md:flex-col gap-2 md:gap-3 text-slate-300 overflow-x-auto pb-2 md:pb-0 whitespace-nowrap">
+            <button className="text-right hover:text-white bg-slate-700 px-4 py-2 md:p-3 rounded font-medium transition shadow-sm border border-slate-600 text-sm md:text-base">
               🎧 תצוגת מוקדן
             </button>
-            <button className="text-right hover:text-white hover:bg-slate-700 p-3 rounded transition">
-              📹 צפייה חיה (קיר וידאו)
+            <button className="text-right hover:text-white hover:bg-slate-700 px-4 py-2 md:p-3 rounded transition text-sm md:text-base">
+              📹 צפייה חיה
             </button>
-            <button className="text-right hover:text-white hover:bg-slate-700 p-3 rounded transition">
-              📒 יומן מבצעי (Shift Log)
+            <button className="text-right hover:text-white hover:bg-slate-700 px-4 py-2 md:p-3 rounded transition text-sm md:text-base">
+              📒 יומן מבצעי
             </button>
           </nav>
         </div>
-        <div className="flex flex-col gap-3">
-            <div className="bg-slate-700 p-3 rounded text-sm text-center border border-slate-600">
+        <div className="flex flex-row md:flex-col justify-between md:justify-start items-center md:items-stretch gap-3 mt-4 md:mt-0">
+            <div className="bg-slate-700 px-3 py-2 md:p-3 rounded text-xs md:text-sm text-center border border-slate-600">
               🟢 סטטוס מערכת: תקין
             </div>
             <button 
                 onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded transition font-bold shadow-md"
+                className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded transition font-bold shadow-md text-sm md:text-base"
             >
                 התנתק
             </button>
         </div>
       </aside>
 
-      <main className="flex-1 p-6 flex flex-col overflow-hidden">
-        <header className="mb-6 flex justify-between items-center shrink-0">
+      {/* אזור תוכן ראשי מותאם לגלגול במובייל */}
+      <main className="flex-1 p-4 md:p-6 flex flex-col overflow-y-auto md:overflow-hidden w-full">
+        <header className="mb-4 md:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 md:gap-4 shrink-0">
           <div>
-            <h2 className="text-3xl font-bold text-slate-800">מוקד שליטה בזמן אמת</h2>
-            <p className="text-slate-500 mt-1">מנטר אזורים פעילים ומציג התרעות מבוססות מצלמה</p>
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-800">מוקד שליטה בזמן אמת</h2>
+            <p className="text-sm md:text-base text-slate-500 mt-1">מנטר אזורים פעילים ומציג התרעות מבוססות מצלמה</p>
           </div>
-          <div className="bg-white px-4 py-2 rounded-full shadow-sm text-sm text-green-700 border border-green-200 font-bold flex items-center gap-2">
+          <div className="bg-white px-3 py-1.5 md:px-4 md:py-2 rounded-full shadow-sm text-xs md:text-sm text-green-700 border border-green-200 font-bold flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-            מחובר לשרת הנתונים
+            מחובר לשרת
           </div>
         </header>
 
-        <div className="flex flex-col gap-6 flex-1 overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 shrink-0 h-72">
-              <div className="lg:col-span-2 bg-white rounded-xl shadow-md border border-slate-200 flex flex-col h-full overflow-hidden">
+        <div className="flex flex-col gap-4 md:gap-6 flex-1 md:overflow-hidden">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 shrink-0 md:h-72">
+              <div className="lg:col-span-2 bg-white rounded-xl shadow-md border border-slate-200 flex flex-col h-[300px] md:h-full overflow-hidden">
                 <div className="bg-slate-50 p-3 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center z-10 relative">
                     <span className="flex items-center gap-2">📍 מפת צמתים</span>
                     <span className="text-xs font-normal text-slate-500 bg-white px-2 py-1 rounded border border-slate-200">חיבור API חי</span>
@@ -170,7 +172,7 @@ function DispatcherDashboard() {
                 </div>
               </div>
               
-              <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col h-full">
+              <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col h-[300px] md:h-full">
                 <div className="bg-slate-50 p-3 border-b border-slate-200 flex flex-col gap-3 shrink-0">
                     <div className="flex justify-between items-center font-bold text-slate-700">
                         <span className="flex items-center gap-2">🚦 פריסת צמתים (DB)</span>
@@ -207,18 +209,18 @@ function DispatcherDashboard() {
               </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col flex-1 overflow-hidden relative">
-             <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center shrink-0">
+          <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col flex-1 overflow-hidden relative min-h-[400px]">
+             <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 shrink-0">
                 <span>⚠️ טבלת התרעות מהשטח</span>
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3 flex-wrap">
                     <div className="flex items-center gap-2 text-sm font-normal">
-                        <label htmlFor="dateFilter" className="text-slate-600">סנן לפי תאריך:</label>
+                        <label htmlFor="dateFilter" className="text-slate-600">סינון:</label>
                         <input 
                             type="date" 
                             id="dateFilter"
                             value={filterDate}
                             onChange={(e) => setFilterDate(e.target.value)}
-                            className="border border-slate-300 rounded px-2 py-1 outline-none focus:border-blue-500"
+                            className="border border-slate-300 rounded px-2 py-1 outline-none focus:border-blue-500 max-w-[130px]"
                         />
                         {filterDate && (
                             <button onClick={() => setFilterDate('')} className="text-red-500 text-xs hover:underline">
@@ -226,28 +228,28 @@ function DispatcherDashboard() {
                             </button>
                         )}
                     </div>
-                    <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+                    <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full whitespace-nowrap">
                       {filteredAlerts.filter(a => !a.isResolved).length} ממתינות
                     </span>
                 </div>
             </div>
             
             {isLoading ? (
-                <div className="flex flex-col items-center justify-center flex-1 space-y-4 bg-slate-50/50">
+                <div className="flex flex-col items-center justify-center flex-1 space-y-4 bg-slate-50/50 min-h-[200px]">
                     <div className="w-12 h-12 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin"></div>
                     <div className="text-slate-600 font-medium animate-pulse">מתחבר לשרת הנתונים...</div>
                 </div>
             ) : error ? (
-                <div className="flex flex-col items-center justify-center flex-1 space-y-3 bg-red-50/50">
+                <div className="flex flex-col items-center justify-center flex-1 space-y-3 bg-red-50/50 min-h-[200px]">
                     <span className="text-4xl">⚠️</span>
-                    <span className="font-bold text-red-600">{error}</span>
+                    <span className="font-bold text-red-600 text-center">{error}</span>
                     <button onClick={() => window.location.reload()} className="mt-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-800 rounded font-medium transition shadow-sm border border-red-200">
                         נסה להתחבר שוב
                     </button>
                 </div>
             ) : (
                 <div className="overflow-x-auto overflow-y-auto flex-1">
-                    <table className="w-full text-right border-collapse">
+                    <table className="w-full text-right border-collapse min-w-[800px]">
                         <thead className="bg-white sticky top-0 border-b-2 border-slate-200 shadow-sm z-10">
                             <tr className="text-slate-500 text-sm">
                                 <th className="p-4 font-bold whitespace-nowrap">תאריך ושעה</th>
@@ -268,7 +270,7 @@ function DispatcherDashboard() {
                                         <div className="text-slate-400">{formatTime(alert.timestamp)}</div>
                                     </td>
                                     <td className="p-4 whitespace-nowrap">{getSeverityBadge(alert.severity)}</td>
-                                    <td className="p-4 font-bold text-slate-800">{alert.description}</td>
+                                    <td className="p-4 font-bold text-slate-800 min-w-[150px]">{alert.description}</td>
                                     <td className="p-4 whitespace-nowrap">
                                         {alert.personType ? (
                                             <div className="flex flex-col gap-1">
@@ -336,7 +338,7 @@ function DispatcherDashboard() {
         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm transition-all">
             <div className="bg-white p-6 rounded-2xl shadow-2xl max-w-4xl w-full flex flex-col relative border border-slate-200">
                 <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-4">
-                    <h3 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
+                    <h3 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">
                         📷 תיעוד אירוע סכנה מהשטח
                     </h3>
                     <button 

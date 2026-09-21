@@ -29,53 +29,54 @@ function TechnicianDashboard() {
   };
 
   return (
-    <div className="flex h-screen bg-slate-100 font-sans" dir="rtl">
+    <div className="flex flex-col md:flex-row h-screen bg-slate-100 font-sans" dir="rtl">
       
-      <aside className="w-64 bg-slate-800 text-white p-6 flex flex-col justify-between shadow-xl z-10 shrink-0">
+      {/* תפריט צד מותאם למובייל */}
+      <aside className="w-full md:w-64 bg-slate-800 text-white p-4 md:p-6 flex flex-col md:justify-between shadow-xl z-20 shrink-0 md:h-full">
         <div>
-          <h1 className="text-2xl font-bold mb-8 text-center border-b border-slate-700 pb-4">
+          <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-8 text-center border-b border-slate-700 pb-4">
             SafeCross 🚦
           </h1>
-          <nav className="flex flex-col gap-3 text-slate-300">
-            <button className="text-right text-white bg-slate-700 p-3 rounded font-medium transition shadow-sm border border-slate-600 flex items-center gap-2">
-              🔧 קריאות שירות פתוחות
+          <nav className="flex flex-row md:flex-col gap-2 md:gap-3 text-slate-300 overflow-x-auto pb-2 md:pb-0 whitespace-nowrap">
+            <button className="text-right text-white bg-slate-700 px-4 py-2 md:p-3 rounded font-medium transition shadow-sm border border-slate-600 flex items-center gap-2 text-sm md:text-base">
+              🔧 קריאות שירות
             </button>
-            <button className="text-right hover:text-white hover:bg-slate-700 p-3 rounded transition flex items-center gap-2">
-              📦 ניהול מלאי חלפים
+            <button className="text-right hover:text-white hover:bg-slate-700 px-4 py-2 md:p-3 rounded transition flex items-center gap-2 text-sm md:text-base">
+              📦 מלאי חלפים
             </button>
           </nav>
         </div>
         
-        <div className="flex flex-col gap-3">
-            <div className="bg-slate-700 p-3 rounded text-sm text-center border border-slate-600">
-                👷‍♂️ מחובר כטכנאי שטח
+        <div className="flex flex-row md:flex-col justify-between md:justify-start items-center md:items-stretch gap-3 mt-4 md:mt-0">
+            <div className="bg-slate-700 px-3 py-2 md:p-3 rounded text-xs md:text-sm text-center border border-slate-600">
+                👷‍♂️ טכנאי שטח
             </div>
             <button 
                 onClick={handleLogout}
-                className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded transition font-bold shadow-md"
+                className="bg-red-500 hover:bg-red-600 text-white py-2 px-4 rounded transition font-bold shadow-md text-sm md:text-base"
             >
                 התנתק
             </button>
         </div>
       </aside>
 
-      <main className="flex-1 p-6 flex flex-col overflow-y-auto">
+      <main className="flex-1 p-4 md:p-6 flex flex-col overflow-y-auto w-full">
         
-        <header className="mb-6 flex justify-between items-center shrink-0">
+        <header className="mb-4 md:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 md:gap-4 shrink-0">
           <div>
-            <h2 className="text-3xl font-bold text-slate-800">ניהול תקלות חומרה</h2>
-            <p className="text-slate-500 mt-1">רשימת ציוד קצה הדורש התערבות טכנית בשטח</p>
+            <h2 className="text-2xl md:text-3xl font-bold text-slate-800">ניהול תקלות חומרה</h2>
+            <p className="text-sm md:text-base text-slate-500 mt-1">רשימת ציוד קצה הדורש התערבות בשטח</p>
           </div>
-          <div className="bg-orange-100 px-4 py-2 rounded-full shadow-sm text-sm text-orange-800 border border-orange-200 font-bold flex items-center gap-2">
+          <div className="bg-orange-100 px-3 py-1.5 md:px-4 md:py-2 rounded-full shadow-sm text-xs md:text-sm text-orange-800 border border-orange-200 font-bold flex items-center gap-2">
             <span>{faultyCrosswalks.length} תקלות פתוחות</span>
           </div>
         </header>
 
-        <div className="flex flex-col gap-6 flex-1">
+        <div className="flex flex-col gap-4 md:gap-6 flex-1">
 
           {faultyCrosswalks.length > 0 && (
-            <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden h-64 shrink-0 flex flex-col">
-              <div className="bg-slate-50 p-2 border-b border-slate-200 font-bold text-slate-700 text-sm">
+            <div className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden h-48 md:h-64 shrink-0 flex flex-col">
+              <div className="bg-slate-50 p-2 border-b border-slate-200 font-bold text-slate-700 text-xs md:text-sm">
                 🗺️ פריסת תקלות גיאוגרפית
               </div>
               <div className="flex-1 relative z-0">
@@ -106,12 +107,12 @@ function TechnicianDashboard() {
           )}
 
           <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col flex-1 overflow-hidden">
-              <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center">
+              <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex justify-between items-center text-sm md:text-base">
                   <span>🛠️ סידור עבודה - צמתים לתיקון</span>
               </div>
               
               <div className="overflow-x-auto">
-                  <table className="w-full text-right">
+                  <table className="w-full text-right min-w-[700px]">
                       <thead className="bg-white border-b-2 border-slate-200 text-slate-500 text-sm">
                           <tr>
                               <th className="p-4 font-bold">מיקום הצומת</th>
@@ -132,13 +133,13 @@ function TechnicianDashboard() {
                                   <td className="p-4">
                                       <div className="flex flex-col gap-2">
                                           {cw.cameraStatus === 'offline' && (
-                                              <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold inline-block w-fit border border-red-200">
+                                              <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold inline-block w-fit border border-red-200 whitespace-nowrap">
                                                   📹 נתק תקשורת - מצלמה
                                               </span>
                                           )}
                                           {cw.ledStatus === 'offline' && (
-                                              <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold inline-block w-fit border border-red-200">
-                                                  💡 קצר/נתק - מערכת לדים
+                                              <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold inline-block w-fit border border-red-200 whitespace-nowrap">
+                                                  💡 קצר/נתק - לדים
                                               </span>
                                           )}
                                       </div>
@@ -151,14 +152,14 @@ function TechnicianDashboard() {
                                                 href={`https://waze.com/ul?ll=${cw.lat},${cw.lng}&navigate=yes`}
                                                 target="_blank"
                                                 rel="noreferrer"
-                                                className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1 rounded text-sm font-bold border border-blue-200 transition inline-block"
+                                                className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded text-xs font-bold border border-blue-200 transition inline-block whitespace-nowrap"
                                             >
-                                                📍 נווט (Waze)
+                                                📍 נווט ב-Waze
                                             </a>
                                           )}
                                           <button 
                                               onClick={() => handleFixHardware(cw._id)}
-                                              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm font-bold shadow transition"
+                                              className="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold shadow transition whitespace-nowrap"
                                           >
                                               ✅ דווח כתוקן
                                           </button>
@@ -168,7 +169,7 @@ function TechnicianDashboard() {
                           ))}
                           {faultyCrosswalks.length === 0 && (
                               <tr>
-                                  <td colSpan="5" className="p-10 text-center text-slate-500 font-medium text-lg">
+                                  <td colSpan="5" className="p-10 text-center text-slate-500 font-medium text-base md:text-lg">
                                       🎉 אין תקלות חומרה פתוחות! כל הצמתים תקינים.
                                   </td>
                               </tr>
