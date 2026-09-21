@@ -35,45 +35,66 @@ function Login() {
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-100 font-sans" dir="rtl">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-96 text-center border border-gray-200">
-        <h2 className="text-3xl font-bold text-gray-800 mb-2">SafeCross 🚦</h2>
-        <p className="text-gray-500 mb-6">מערכת ניהול צמתים חכמה</p>
+    // רקע גרדיאנט כהה ומודרני
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-4 font-sans" dir="rtl">
+      
+      {/* כרטיס אפקט זכוכית (Glassmorphism) */}
+      <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-3xl p-10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] w-full max-w-md">
+        
+        {/* אזור הלוגו */}
+        <div className="text-center mb-10">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-5 shadow-inner">
+             <span className="text-3xl">🚦</span>
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-2 tracking-wide">SafeCross</h2>
+          <p className="text-blue-200 text-sm font-medium">מערכת ניהול צמתים חכמה</p>
+        </div>
 
-        <form onSubmit={handleLogin} className="flex flex-col gap-4">
-          <input
-            type="text"
-            placeholder="שם משתמש או אימייל"
-            className="p-3 border border-gray-300 rounded text-right bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition outline-none"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-          />
-          <input
-            type="password"
-            placeholder="סיסמה"
-            className="p-3 border border-gray-300 rounded text-right bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition outline-none"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 transition mt-2 shadow-md"
+        {/* טופס התחברות */}
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">שם משתמש או אימייל</label>
+            <input 
+              type="text" 
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-right"
+              placeholder="admin@safecross.com"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-300 mb-2">סיסמה</label>
+            <input 
+              type="password" 
+              className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-right"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
+
+          <button 
+            type="submit" 
+            className="w-full py-3.5 mt-4 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.5)] hover:shadow-[0_0_25px_rgba(37,99,235,0.7)] transition-all duration-300"
           >
             התחבר למערכת
           </button>
         </form>
 
-        <div className="mt-6 text-sm text-gray-600">
+        {/* כפתור הרשמה המותאם לעיצוב הכהה */}
+        <div className="mt-8 text-sm text-center text-gray-400">
           עדיין אין לך חשבון?{' '}
           <span 
             onClick={() => navigate('/register')} 
-            className="text-blue-600 font-bold cursor-pointer hover:underline"
+            className="text-blue-400 font-bold cursor-pointer hover:text-blue-300 hover:underline transition-colors"
           >
             הירשם כאן
           </span>
         </div>
+
       </div>
     </div>
   );

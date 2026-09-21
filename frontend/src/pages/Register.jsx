@@ -34,63 +34,85 @@ function Register() {
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-gray-100 font-sans" dir="rtl">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-96 text-center border border-gray-200">
-        <h2 className="text-3xl font-bold text-gray-800 mb-2">SafeCross 🚦</h2>
-        <p className="text-gray-500 mb-6">יצירת חשבון מפעיל חדש</p>
+    // רקע גרדיאנט כהה ומודרני - זהה לעמוד ההתחברות
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 p-4 font-sans" dir="rtl">
+      
+      {/* כרטיס אפקט זכוכית (Glassmorphism) */}
+      <div className="bg-white/10 backdrop-blur-lg border border-white/20 rounded-3xl p-10 shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] w-full max-w-md">
+        
+        {/* אזור הלוגו */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-4 shadow-inner">
+             <span className="text-3xl">🚦</span>
+          </div>
+          <h2 className="text-3xl font-bold text-white mb-2 tracking-wide">SafeCross</h2>
+          <p className="text-blue-200 text-sm font-medium">יצירת חשבון מפעיל חדש</p>
+        </div>
 
+        {/* הודעת הצלחה מותאמת לעיצוב הכהה */}
         {message ? (
-          <div className="bg-green-100 text-green-800 border border-green-300 p-4 rounded mb-4 font-medium">
+          <div className="bg-green-500/20 border border-green-500/50 text-green-200 p-4 rounded-xl mb-4 font-medium text-center backdrop-blur-sm shadow-[0_0_15px_rgba(34,197,94,0.2)]">
             {message}
           </div>
         ) : (
-          <form onSubmit={handleRegister} className="flex flex-col gap-4">
-            <input
-              type="text"
-              placeholder="שם משתמש (באנגלית בלבד)"
-              className="p-3 border border-gray-300 rounded text-right bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition outline-none"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              required
-            />
-            <input
-              type="email"
-              placeholder="כתובת אימייל"
-              className="p-3 border border-gray-300 rounded text-right bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition outline-none text-left direction-ltr"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <input
-              type="password"
-              placeholder="סיסמה"
-              className="p-3 border border-gray-300 rounded text-right bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition outline-none"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-            <input
-              type="password"
-              placeholder="אימות סיסמה"
-              className="p-3 border border-gray-300 rounded text-right bg-gray-50 focus:bg-white focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition outline-none"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-            />
+          <form onSubmit={handleRegister} className="space-y-4">
+            <div>
+              <input
+                type="text"
+                placeholder="שם משתמש (באנגלית בלבד)"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-right"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <input
+                type="email"
+                placeholder="כתובת אימייל"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-left"
+                dir="ltr"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                placeholder="סיסמה"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-right"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+            <div>
+              <input
+                type="password"
+                placeholder="אימות סיסמה"
+                className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all text-right"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+              />
+            </div>
+            
             <button
               type="submit"
-              className="bg-blue-600 text-white font-bold py-3 rounded hover:bg-blue-700 transition mt-2 shadow-md"
+              className="w-full py-3.5 mt-2 bg-blue-600 hover:bg-blue-500 text-white font-semibold rounded-xl shadow-[0_0_15px_rgba(37,99,235,0.5)] hover:shadow-[0_0_25px_rgba(37,99,235,0.7)] transition-all duration-300"
             >
               הירשם
             </button>
           </form>
         )}
 
-        <div className="mt-6 text-sm text-gray-600">
+        {/* כפתור חזרה המותאם לעיצוב הכהה */}
+        <div className="mt-6 text-sm text-center text-gray-400">
           כבר יש לך חשבון?{' '}
           <span 
             onClick={() => navigate('/')} 
-            className="text-blue-600 font-bold cursor-pointer hover:underline"
+            className="text-blue-400 font-bold cursor-pointer hover:text-blue-300 hover:underline transition-colors"
           >
             חזור להתחברות
           </span>
