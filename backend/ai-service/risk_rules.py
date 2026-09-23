@@ -32,21 +32,34 @@ import config
 
 # ---------------------------------------------------------------- the 12 cases (single source of truth)
 CASES: dict[str, tuple[str, str, str]] = {
-    # id : (level, Hebrew name as agreed, short English reason)
+    # id : (level, Hebrew name, short English reason)
+    # --- Low (logged only, no LEDs) ---
     "L1": ("Low",    "הולך רגל נע במקביל לכביש",              "moving parallel to the road, not approaching"),
     "L2": ("Low",    "הולך רגל עומד רחוק מהשפה",              "standing still, not near the edge"),
     "L3": ("Low",    "הולך רגל מתרחק",                        "moving away from the crossing"),
     "L4": ("Low",    "המתנה שקטה (עומד במקום)",               "standing still at the edge"),
-    "M1": ("Medium", "התקרבות רציפה לכביש",                   "continuous walking approach, very close to the edge"),
-    "M2": ("Medium", "הסחת דעת קרובה לכביש (טלפון)",          "approaching the edge while holding a phone"),
-    "M3": ("Medium", "קבוצת הולכי רגל מתקרבת",                "group of pedestrians approaching together"),
-    "M4": ("Medium", "תחילת ירידה לכביש",                     "stepping off the sidewalk into the edge zone"),
+    "M1": ("Low",    "התקרבות רגילה למעבר",                   "normal walking approach to the crossing"),
+    "M3": ("Low",    "קבוצת הולכי רגל מתקרבת",                "group of pedestrians approaching together"),
+    "M4": ("Low",    "נוכחות באזור המעבר",                    "stepping into / standing in the crossing zone"),
+    # --- Medium (early warning, LEDs) ---
+    "M2": ("Medium", "הסחת דעת בהתקרבות לכביש (טלפון)",       "approaching the edge while holding a phone"),
+    "M5": ("Medium", "התקרבות מהירה ללא האטה",                "brisk approach with no sign of slowing"),
+    "MW": ("Medium", "כלי גלגלים מתקרב ומאט אך לא מספיק",     "wheeled approacher slowing but not enough"),
+    "H2": ("Medium", "ילד מתקרב לכביש",                      "child approaching the edge"),
+    # --- High (imminent, LEDs) ---
     "H1": ("High",   "התפרצות (מהירות גבוהה)",                "bursting toward the road at high speed"),
-    "H2": ("High",   "ילד בקרבת הכביש",                       "child near the edge, moving toward the road"),
-    "H3": ("High",   "מוסח דעת שמתפרץ / לא עוצר",             "distracted by phone, not slowing at the edge"),
-    "H4": ("High",   "הופעה פתאומית ומהירה בקרבת השפה",       "sudden appearance near the edge, already moving toward it"),
+    "H3": ("High",   "מוסח דעת שלא עוצר בשפה",                "distracted by phone, not slowing at the edge"),
+    "H4": ("High",   "הופעה פתאומית ומהירה בקרבת השפה",       "sudden appearance near the edge, moving toward it"),
+    "H5": ("High",   "כניסה לכביש ללא עצירה",                 "fast approach, not slowing - entering without stopping"),
+    "H6": ("High",   "ילד מתפרץ לכביש",                       "child running toward the edge"),
+    "HW": ("High",   "כלי גלגלים מתקרב במהירות",              "wheeled approacher coming in fast / not slowing"),
 }
-PRIORITY = ["H1", "H2", "H3", "H4", "M4", "M2", "M3", "M1", "L4", "L1", "L3", "L2"]
+# High first, then Medium, then Low; within a level, most specific/severe first.
+PRIORITY = [
+    "H6", "H1", "H5", "H3", "H4", "HW",          # High
+    "H2", "M2", "M5", "MW",                        # Medium
+    "M4", "L4", "M1", "L1", "L3", "L2", "M3",     # Low
+]
 LEVEL_RANK = {None: 0, "Low": 1, "Medium": 2, "High": 3}
 
 # A polygon vertex this close to a frame border is treated as lying ON the border
@@ -193,9 +206,13 @@ class RiskEngine:
         for tr in tracks:
             k = self.kinematics(tr, t, frame_w, frame_h, all_live, recently_died_near)
             kins.append((tr, k))
-            results.append(self.assess(tr.track_id, k))
+            if getattr(tr, "kind", "person") == "wheeled":
+                results.append(self.assess_wheeled(tr.track_id, k))
+            else:
+                results.append(self.assess(tr.track_id, k))
 
-        group = self.assess_group(kins)
+        # Group rule only applies to pedestrians.
+        group = self.assess_group([(tr, k) for tr, k in kins if getattr(tr, "kind", "person") == "person"])
         if group is not None:
             results.append(group)
 
@@ -282,24 +299,48 @@ class RiskEngine:
         # Phone rules describe the approach to the curb; a phone alone never creates a case
         # for someone already walking in the road.
         at_or_before_curb = k.dist_last > -cfg.EDGE_JITTER or k.stepping_down
+        is_child = k.person_type == "child"           # only true when the camera is calibrated (see _person_type)
+        brisk = cfg.BRISK_MIN <= k.approach_speed < cfg.RUN_MIN
         rules = {
-            "H1": k.approaching and k.approach_speed >= cfg.RUN_MIN,
-            "H2": k.approaching and k.person_type == "child"
-                  and (k.dist_last < cfg.NEAR_APPROACH or k.time_to_edge <= cfg.TTE_MEDIUM),
+            # --- High ---
+            "H6": k.approaching and is_child and k.approach_speed >= cfg.RUN_MIN,   # child darting
+            "H1": k.approaching and k.approach_speed >= cfg.RUN_MIN,                # running/bursting
+            # no-stop entry: brisk AND not slowing AND already near the edge (normal walk never triggers)
+            "H5": (k.approaching and k.not_slowing and at_or_before_curb
+                   and k.approach_speed >= cfg.BRISK_MIN and k.dist_last < cfg.NEAR_APPROACH),
             "H3": k.approaching and k.has_phone and k.dist_last < cfg.NEAR and k.not_slowing and at_or_before_curb,
             "H4": k.approaching and k.appeared_suddenly,
-            # M4 stays on while the person stands past the curb (a person in the road is not "quiet waiting")
-            "M4": k.stepping_down or (k.stationary and k.dist_last <= -cfg.EDGE_JITTER),
+            "HW": False,                                     # wheeled rule, see matching_wheeled
+            # --- Medium ---
+            "H2": k.approaching and is_child                                        # child walking toward edge
+                  and (k.dist_last < cfg.NEAR_APPROACH or k.time_to_edge <= cfg.TTE_MEDIUM),
             "M2": k.approaching and k.has_phone and k.dist_last < cfg.FAR and at_or_before_curb,
-            "M3": False,                                     # group rule, evaluated across tracks
+            # brisk + no braking, but not yet very close (that would be H5)
+            "M5": (k.approaching and brisk and k.not_slowing
+                   and k.dist_last >= cfg.NEAR and at_or_before_curb),
+            "MW": False,                                     # wheeled rule, see matching_wheeled
+            # --- Low ---
+            "M4": k.stepping_down or (k.stationary and k.dist_last <= -cfg.EDGE_JITTER),
+            "L4": k.stationary and -cfg.EDGE_JITTER < k.dist_last < cfg.NEAR,
             "M1": k.approaching and not k.receded and k.dist_last > -cfg.EDGE_JITTER
                   and (k.dist_last < cfg.NEAR_APPROACH or k.time_to_edge <= cfg.TTE_MEDIUM),
-            "L4": k.stationary and -cfg.EDGE_JITTER < k.dist_last < cfg.NEAR,
             "L1": k.parallel,
             "L3": k.moving_away,
             "L2": k.stationary and k.dist_last >= cfg.NEAR,
+            "M3": False,                                     # group rule, evaluated across tracks
         }
         return [cid for cid in PRIORITY if rules[cid]]
+
+    def matching_wheeled(self, k: Kinematics) -> list[str]:
+        """Wheeled approacher (bicycle/motorcycle heading toward the crossing) -> HW / MW / none."""
+        cfg = self.cfg
+        if not k.motion_known or not k.approaching or k.dist_last >= cfg.WHEELED_NEAR:
+            return []
+        if k.approach_speed >= cfg.WHEELED_FAST or k.not_slowing:
+            return ["HW"]                                    # fast, or not braking -> High
+        if k.approach_speed >= cfg.WHEELED_MOVING_MIN:
+            return ["MW"]                                    # slowing but still coming -> Medium
+        return []
 
     def assess(self, track_id: int, k: Kinematics) -> Assessment:
         matched = self.matching_cases(k)
@@ -326,6 +367,28 @@ class RiskEngine:
                 "personTypeSource": k.person_type_source,
                 "truncated": k.truncated_last,
                 "hRefPx": round(k.h_ref_px, 1),
+                "note": "" if k.motion_known else "insufficient motion history",
+            },
+        )
+
+    def assess_wheeled(self, track_id: int, k: Kinematics) -> Assessment:
+        """Verdict for a wheeled approacher (bicycle/motorcycle)."""
+        matched = self.matching_wheeled(k)
+        case_id = matched[0] if matched else None
+        level, name, reason = CASES[case_id] if case_id else (None, None, "no rule matched")
+        confidence = int(round(100 * k.mean_confidence * min(1.0, k.n_obs / 3.0))) if case_id else 0
+        return Assessment(
+            track_id=track_id, level=level, case_id=case_id, case_name=name, reason=reason,
+            confidence=max(1, min(100, confidence)) if case_id else 0,
+            person_type="wheeled", distracted=False,
+            metadata={
+                "matchedCases": matched,
+                "kind": "wheeled",
+                "distanceToEdgeH": round(k.dist_last, 3),
+                "approachSpeedHps": round(k.approach_speed, 3),
+                "speedHps": round(k.speed, 3),
+                "timeToEdgeSec": None if math.isinf(k.time_to_edge) else round(k.time_to_edge, 2),
+                "frames": k.n_obs,
                 "note": "" if k.motion_known else "insufficient motion history",
             },
         )
@@ -421,13 +484,7 @@ class RiskEngine:
             expected = (h1 + slope * (y - y1)) * frame_h
             if expected > 0:
                 return ("child" if h < cfg.CHILD_HEIGHT_RATIO * expected else "adult"), "calibration"
-        others = []
-        for other in all_live_tracks or []:
-            if other is track or other.last.truncated or other.last.t != last_obs.t:
-                continue                                  # only people visible in this very frame
-            if abs(other.last.anchor[1] - last_obs.anchor[1]) <= 0.1 * frame_h:
-                others.append(other.last.height)
-        if not others:
-            return "unknown", "none"
-        tallest = max(others)
-        return ("child" if h < cfg.CHILD_HEIGHT_RATIO * tallest else "adult"), "relative"
+        # No calibration -> do NOT guess. The old relative-height heuristic mislabeled adults as
+        # children (perspective, single-person frames), which fired false child alerts. Child cases
+        # stay silent until ADULT_HEIGHT_REF is calibrated for the camera.
+        return "unknown", "none"

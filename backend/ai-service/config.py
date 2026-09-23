@@ -11,6 +11,8 @@
 #   only needs MODEL_PATH + CONFIDENCE_THRESHOLD + the class allow-list.
 # ============================================================
 
+import os
+
 # --- Model (AI service needs this) ---
 MODEL_PATH = "yolov8n.pt"     # lightweight model; swap for yolov8s.pt for accuracy
 CONFIDENCE_THRESHOLD = 0.35   # ignore detections below this confidence
@@ -21,7 +23,11 @@ CONFIDENCE_THRESHOLD = 0.35   # ignore detections below this confidence
 PERSON_CLASS_ID = 0
 VEHICLE_CLASS_IDS = {2, 3, 5, 7}   # car, motorcycle, bus, truck
 PHONE_CLASS_ID = 67                # cell phone (for distraction rule)
-TARGET_CLASS_IDS = {PERSON_CLASS_ID, PHONE_CLASS_ID} | VEHICLE_CLASS_IDS
+# Wheeled approachers coming toward the crossing (treated like fast pedestrians, not cross-traffic).
+# bicycle (1) + motorcycle (3). e-scooter is not its own COCO class (reads as person/motorcycle).
+BICYCLE_CLASS_ID = 1
+WHEELED_CLASS_IDS = {BICYCLE_CLASS_ID, 3}
+TARGET_CLASS_IDS = {PERSON_CLASS_ID, PHONE_CLASS_ID} | VEHICLE_CLASS_IDS | WHEELED_CLASS_IDS
 
 # --- ROI (belongs to the backend danger layer under Option B) ---
 ROI_POLYGON_NORM = [
@@ -55,6 +61,7 @@ PROCESS_WIDTH = 960                  # downscale frames to this width before YOL
 PROCESS_EVERY_N_FRAMES = 3           # analyse 1 of every N frames (CPU inference ~100-200 ms/frame)
 SHOW_WINDOW = False                  # True = draw boxes/zone and open a window (needs a desktop). CLI: --show
 WINDOW_NAME = "Smart Crosswalk - Video Analysis"
+SHOW_MAX_HEIGHT = 720               # cap the displayed window height (px) so tall videos fit the screen (display only, not processing)
 
 # --- Tracking (tracker.py): give every person a stable id across frames ---
 TRACKER = "simple"                   # "simple" = our matcher (no extra deps) | "yolo" = ultralytics ByteTrack
@@ -79,24 +86,33 @@ NEAR = 0.5                           # "at the edge" (static rules)             
 NEAR_APPROACH = 1.2                  # "very close" for M1 continuous approach              ~1.2 body heights
 FAR = 1.5                            # phone rule (M2) only matters within this distance
 MOVING_MIN = 0.15                    # below this (h/s) a person is "standing" (box jitter is ~0.05 h/s)
+BRISK_MIN = 1.5                      # at/above this (h/s) = brisk (faster than a calm walk) but not yet a run
 RUN_MIN = 2.0                        # at/above this speed (h/s) = running / bursting (H1)
-TTE_MEDIUM = 2.0                     # time-to-edge (s) at walking pace => Medium (M1) even if not yet "very close"
+TTE_MEDIUM = 2.0                     # time-to-edge (s) at walking pace => early-warning even if not yet "very close"
 PARALLEL_RATIO = 0.3                 # |approach| < 0.3 * speed => moving parallel to the road
 PHONE_MAX_DIST = 0.35                # phone centre within 0.35 h of the chest point => "holding a phone"
 PHONE_MIN_FRACTION = 0.5             # phone seen in >= 50% of the window frames (and >= PHONE_MIN_FRAMES)
 PHONE_MIN_FRAMES = 2
 CHILD_HEIGHT_RATIO = 0.8             # h < 0.8 x adult reference height => child (1.4 m / 1.75 m)
-ADULT_HEIGHT_REF = None              # optional per-camera calibration: [(y_feet_norm, h_norm), (y_feet_norm, h_norm)]
-GROUP_MIN = 3                        # M3: at least this many people approaching together
-SUDDEN_MAX_AGE_SECONDS = 0.6         # H4: track younger than this AND already near AND approaching
+ADULT_HEIGHT_REF = [(0.7345, 0.1671), (0.8926, 0.3643)]
+GROUP_MIN = 3                        # group rule: at least this many people approaching together
+SUDDEN_MAX_AGE_SECONDS = 0.6         # sudden-appearance: track younger than this AND already near AND approaching
 METERS_PER_H = None                  # per-camera: metres per body-height unit. None => metre fields sent as null
 
+# --- Wheeled approacher rules (bicycle / motorcycle heading toward the crossing) ---
+WHEELED_MOVING_MIN = 0.5            # h/s: below this a wheeled object is basically stopped (ignore)
+WHEELED_FAST = 2.5                  # h/s: at/above this a wheeled approacher is "fast" -> High
+WHEELED_NEAR = 2.5                 # h: only assess wheeled objects within this distance of the edge
+WHEELED_MIN_HEIGHT_PX = 30         # ignore tiny wheeled boxes (far-away jitter)
+
 # --- Alerts to the Node backend (alert_sender.py, port of Rachel's Sprint 3 alert_service.py) ---
-API_URL = "http://localhost:3000/api/alerts"   # Rachel's createAlert: uploads image, saves, pushes via Socket.io
+# Where alerts are POSTed. Defaults to localhost; set the API_URL env var to point at the
+# deployed Render backend so the live web dashboard sees the alerts (see below).
+API_URL = os.environ.get("API_URL", "http://localhost:3000/api/alerts")
 API_TIMEOUT_SECONDS = 5
 API_ENABLED = True                   # False = analyse only, print events, no HTTP
 MIN_FRAMES_FOR_ALERT = 3             # a person must be seen in >= 3 analysed frames before any alert (motion + phone need history)
-LOW_REPEAT_SECONDS = 10.0            # same Low case for the same person is re-sent at most every 10 s
-ALERT_REPEAT_SECONDS = 3.0           # same Medium/High case for the same person: at most every 3 s
+LOW_REPEAT_SECONDS = 30.0            # a person staying at Low is re-sent at most every 30 s (was 10 - too chatty)
+ALERT_REPEAT_SECONDS = 15.0          # a person staying at the same Medium/High level: at most every 15 s (was 3 - too chatty)
 CASE_CHANGE_SECONDS = 1.0            # a DIFFERENT case at the same level (e.g. M1 -> M4) is sent after 1 s
 SNAPSHOT_JPEG_QUALITY = 70

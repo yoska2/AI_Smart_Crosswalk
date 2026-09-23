@@ -35,6 +35,7 @@ class Observation:
     confidence: float
     truncated: bool          # box touches a frame border -> its height is not the real body height
     phone: bool              # a cell phone was assigned to this person in this frame
+    kind: str = "person"     # "person" | "wheeled" (bicycle/motorcycle approaching)
 
     @property
     def width(self) -> float:
@@ -57,9 +58,10 @@ class Observation:
 
 @dataclass
 class Track:
-    """One person followed over time."""
+    """One tracked object (person or wheeled) followed over time."""
     track_id: int
     observations: list[Observation] = field(default_factory=list)
+    kind: str = "person"     # "person" | "wheeled"
 
     @property
     def born_at(self) -> float:
@@ -155,11 +157,12 @@ def assign_phones(persons: list[dict], phones: list[dict],
     return holders
 
 
-def split_detections(detections: list[dict]) -> tuple[list[dict], list[dict]]:
-    """detector.detect() output -> (persons, phones). Vehicles are ignored here."""
+def split_detections(detections: list[dict]) -> tuple[list[dict], list[dict], list[dict]]:
+    """detector.detect() output -> (persons, phones, wheeled). Other vehicles are ignored here."""
     persons = [d for d in detections if d["classId"] == config.PERSON_CLASS_ID]
     phones = [d for d in detections if d["classId"] == config.PHONE_CLASS_ID]
-    return persons, phones
+    wheeled = [d for d in detections if d["classId"] in config.WHEELED_CLASS_IDS]
+    return persons, phones, wheeled
 
 
 # ---------------------------------------------------------------- SimpleTracker
@@ -190,7 +193,7 @@ class SimpleTracker:
         Detect + match one frame. Returns (tracks seen in THIS frame, phone detections).
         """
         frame_h, frame_w = frame.shape[:2]
-        persons, phones = split_detections(self.detect(frame))
+        persons, phones, wheeled = split_detections(self.detect(frame))
         persons = [p for p in persons if p["height"] >= config.MIN_PERSON_HEIGHT_PX]
         persons = suppress_duplicates(persons)
         holders = assign_phones(persons, phones)
@@ -203,6 +206,19 @@ class SimpleTracker:
                 phone=(i in holders),
             )
             for i, p in enumerate(persons)
+        ]
+
+        # Wheeled approachers (bicycle/motorcycle) tracked alongside people, tagged kind="wheeled".
+        wheeled = [w for w in wheeled if w["height"] >= config.WHEELED_MIN_HEIGHT_PX]
+        wheeled = suppress_duplicates(wheeled)
+        observations += [
+            Observation(
+                t=t, x1=w["x"], y1=w["y"], x2=w["x"] + w["width"], y2=w["y"] + w["height"],
+                confidence=w["confidence"],
+                truncated=is_truncated(w, frame_w, frame_h),
+                phone=False, kind="wheeled",
+            )
+            for w in wheeled
         ]
 
         self._expire(t)
@@ -254,6 +270,8 @@ class SimpleTracker:
             gate_px = max(config.TRACK_MATCH_SPEED_H_PER_S * dt * h_ref, config.TRACK_MIN_GATE_PX)
             pred = self._predict(tr, t)
             for oi, ob in enumerate(observations):
+                if tr.kind != ob.kind:
+                    continue                              # never match a person box to a wheeled track
                 if not (ob.truncated or tr.last.truncated):
                     ratio = ob.height / tr.last.height if tr.last.height > 0 else 1.0
                     lo, hi = config.TRACK_SIZE_RATIO
@@ -279,7 +297,7 @@ class SimpleTracker:
         for oi, ob in enumerate(observations):
             if oi in matched_obs:
                 continue
-            tr = Track(track_id=self._next_id, observations=[ob])
+            tr = Track(track_id=self._next_id, observations=[ob], kind=ob.kind)
             self._next_id += 1
             self._tracks[tr.track_id] = tr
             seen.append(tr)
@@ -313,6 +331,7 @@ class YoloTracker:
                                    conf=config.CONFIDENCE_THRESHOLD,
                                    classes=sorted(config.TARGET_CLASS_IDS))[0]
         persons, phones, ids = [], [], []
+        wheeled, wheeled_ids = [], []
         for box in results.boxes:
             class_id = int(box.cls[0])
             x1, y1, x2, y2 = (float(v) for v in box.xyxy[0])
@@ -323,6 +342,9 @@ class YoloTracker:
                 ids.append(int(box.id[0]))
             elif class_id == config.PHONE_CLASS_ID:
                 phones.append(det)
+            elif class_id in config.WHEELED_CLASS_IDS and box.id is not None:
+                wheeled.append(det)
+                wheeled_ids.append(int(box.id[0]))
         holders = assign_phones(persons, phones)
 
         seen: list[Track] = []
@@ -333,6 +355,17 @@ class YoloTracker:
                              confidence=p["confidence"], truncated=is_truncated(p, frame_w, frame_h),
                              phone=(i in holders))
             tr = self._tracks.setdefault(tid, Track(track_id=tid))
+            tr.observations.append(ob)
+            tr.trim(t)
+            seen.append(tr)
+
+        for w, tid in zip(wheeled, wheeled_ids):
+            if w["height"] < config.WHEELED_MIN_HEIGHT_PX:
+                continue
+            ob = Observation(t=t, x1=w["x"], y1=w["y"], x2=w["x"] + w["width"], y2=w["y"] + w["height"],
+                             confidence=w["confidence"], truncated=is_truncated(w, frame_w, frame_h),
+                             phone=False, kind="wheeled")
+            tr = self._tracks.setdefault(tid, Track(track_id=tid, kind="wheeled"))
             tr.observations.append(ob)
             tr.trim(t)
             seen.append(tr)

@@ -2,9 +2,43 @@
 # design review asked for. Geometry: see tests/helpers.py (1 h = 100 px, zone line y = 800).
 import unittest
 
+import config
 from risk_rules import Assessment, CASES, PRIORITY
-from tests.helpers import FRAME_H, FRAME_W, engine, obs, track
-from tracker import Track
+from tests.helpers import FRAME_H, FRAME_W, ZONE_TOP, engine, obs, track, y_feet_for_dist
+from tracker import Observation, Track
+
+
+_saved_ref = None
+
+
+def setUpModule():
+    """Run these rule tests with child-calibration OFF by default (deterministic, independent
+    of whatever ADULT_HEIGHT_REF is committed in config.py). Child tests opt in via use_calibration."""
+    global _saved_ref
+    _saved_ref = config.ADULT_HEIGHT_REF
+    config.ADULT_HEIGHT_REF = None
+
+
+def tearDownModule():
+    config.ADULT_HEIGHT_REF = _saved_ref
+
+
+def use_calibration(tc):
+    """Turn on child detection for a test: constant adult height = 0.1*frame (100 px)."""
+    prev = config.ADULT_HEIGHT_REF
+    config.ADULT_HEIGHT_REF = [(0.6, 0.1), (0.9, 0.1)]
+    tc.addCleanup(lambda: setattr(config, "ADULT_HEIGHT_REF", prev))
+
+
+def wheeled_track(track_id: int, dists: list[float], t0: float = 0.0, dt: float = 0.5,
+                  x: float = 500.0, h: float = 100.0) -> Track:
+    """A wheeled approacher (bicycle/motorcycle) track."""
+    obs_list = []
+    for i, d in enumerate(dists):
+        yf = y_feet_for_dist(d, h)
+        obs_list.append(Observation(t=t0 + i * dt, x1=x - 20, y1=yf - h, x2=x + 20, y2=yf,
+                                    confidence=0.9, truncated=False, phone=False, kind="wheeled"))
+    return Track(track_id=track_id, observations=obs_list, kind="wheeled")
 
 
 def verdict(tr: Track, others=None, died=None, t=None, stream_t0=None) -> Assessment:
@@ -17,11 +51,11 @@ def verdict(tr: Track, others=None, died=None, t=None, stream_t0=None) -> Assess
 
 
 class TestCaseTable(unittest.TestCase):
-    def test_twelve_cases_and_priority(self):
-        self.assertEqual(len(CASES), 12)
+    def test_case_table_and_priority(self):
+        self.assertEqual(len(CASES), 17)
         self.assertEqual(sorted(CASES), sorted(PRIORITY))
         self.assertEqual([CASES[c][0] for c in PRIORITY],
-                         ["High"] * 4 + ["Medium"] * 4 + ["Low"] * 4)
+                         ["High"] * 6 + ["Medium"] * 4 + ["Low"] * 7)
 
 
 class TestLowCases(unittest.TestCase):
@@ -58,11 +92,19 @@ class TestLowCases(unittest.TestCase):
 
 
 class TestMediumCases(unittest.TestCase):
-    def test_M1_continuous_approach(self):
+    def test_M1_normal_approach_is_low(self):
+        # a calm walk up to the crossing is normal behaviour -> Low, no LEDs
         a = verdict(track(1, [2.0, 1.5, 1.0, 0.5]))          # 1.0 h/s, ends 0.5 h from the edge
         self.assertEqual(a.case_id, "M1")
-        self.assertTrue(a.danger)
+        self.assertEqual(a.level, "Low")
+        self.assertFalse(a.danger)
         self.assertEqual(a.metadata["approachSpeedHps"], 1.0)
+
+    def test_M5_brisk_no_brake(self):
+        # brisk (1.8 h/s), not slowing, still ~1.6 h out -> Medium early warning
+        a = verdict(track(1, [3.4, 2.5, 1.6]))
+        self.assertEqual(a.case_id, "M5")
+        self.assertEqual(a.level, "Medium")
 
     def test_M1_survives_one_jitter_interval(self):
         a = verdict(track(1, [1.2, 0.85, 0.87, 0.4]))
@@ -128,12 +170,33 @@ class TestHighCases(unittest.TestCase):
         self.assertNotEqual(a.case_id, "H1")
         self.assertTrue(a.metadata["truncated"])
 
-    def test_H2_child_next_to_adult(self):
-        adult = track(9, [1.0, 1.0, 1.0], x=300, h=100)
-        child = track(1, [1.0, 0.6, 0.2], x=600, h=70)      # 70 < 0.8 * 100 -> child
-        a = verdict(child, others=[adult])
-        self.assertEqual(a.case_id, "H2")
+    def test_H2_child_walking_is_medium(self):
+        use_calibration(self)
+        child = track(1, [1.0, 0.6, 0.2], x=600, h=70)      # 70 < 0.8 * 100 (calibrated adult) -> child
+        a = verdict(child)
         self.assertEqual(a.person_type, "child")
+        self.assertEqual(a.case_id, "H2")
+        self.assertEqual(a.level, "Medium")                 # child walking toward the edge = Medium
+
+    def test_H6_child_darting_is_high(self):
+        use_calibration(self)
+        child = track(1, [2.4, 1.2], x=600, h=70)           # 2.4 h/s = running
+        a = verdict(child)
+        self.assertEqual(a.person_type, "child")
+        self.assertEqual(a.case_id, "H6")
+        self.assertEqual(a.level, "High")
+
+    def test_H5_no_stop_entry(self):
+        # brisk (1.8 h/s), not slowing, already within 1.2 h of the edge -> entering without stopping
+        a = verdict(track(1, [2.6, 1.7, 0.8]))
+        self.assertEqual(a.case_id, "H5")
+        self.assertEqual(a.level, "High")
+
+    def test_child_needs_calibration_else_unknown(self):
+        # without ADULT_HEIGHT_REF the system does NOT guess child (no false child alarms)
+        a = verdict(track(1, [1.0, 0.6, 0.2], h=70))
+        self.assertEqual(a.person_type, "unknown")
+        self.assertNotIn(a.case_id, ("H2", "H6"))
 
     def test_child_alone_is_unknown_and_falls_back_to_M1(self):
         a = verdict(track(1, [1.0, 0.6, 0.2], h=70))
@@ -141,9 +204,9 @@ class TestHighCases(unittest.TestCase):
         self.assertEqual(a.case_id, "M1")                     # never gate on classification
 
     def test_child_walking_parallel_is_L1_not_H2(self):
-        adult = track(9, [0.3, 0.3, 0.3, 0.3], x=300, h=100)
+        use_calibration(self)
         child = track(1, [0.3] * 4, xs=[100, 150, 200, 250], h=70)
-        a = verdict(child, others=[adult])
+        a = verdict(child)
         self.assertEqual(a.case_id, "L1")
         self.assertEqual(a.person_type, "child")
 
@@ -190,9 +253,9 @@ class TestSingleFrameAndOutput(unittest.TestCase):
         self.assertEqual(a.case_id, "M4")
 
     def test_child_far_and_slow_is_not_H2(self):
-        adult = track(9, [3.0] * 4, x=300, h=100)
+        use_calibration(self)
         child = track(1, [4.29, 4.19, 4.09, 3.99], x=600, h=70)   # 0.2 h/s, ~20 s from the edge
-        a = verdict(child, others=[adult])
+        a = verdict(child)
         self.assertEqual(a.person_type, "child")
         self.assertIsNone(a.case_id)
 
@@ -213,6 +276,23 @@ class TestSingleFrameAndOutput(unittest.TestCase):
         for key in ("matchedCases", "distanceToEdgeH", "approachSpeedHps", "speedHps",
                     "timeToEdgeSec", "frames", "phoneFraction", "personTypeSource", "hRefPx"):
             self.assertIn(key, a.metadata)
+
+
+class TestWheeledCases(unittest.TestCase):
+    def test_HW_wheeled_fast(self):
+        a = verdict(wheeled_track(7, [2.5, 1.0]))            # 3.0 h/s toward the edge
+        self.assertEqual(a.case_id, "HW")
+        self.assertEqual(a.level, "High")
+        self.assertEqual(a.person_type, "wheeled")
+
+    def test_MW_wheeled_slowing_but_not_enough(self):
+        a = verdict(wheeled_track(7, [2.0, 1.3, 0.9]))       # ~1.1 h/s, decelerating
+        self.assertEqual(a.case_id, "MW")
+        self.assertEqual(a.level, "Medium")
+
+    def test_wheeled_far_is_ignored(self):
+        a = verdict(wheeled_track(7, [5.0, 4.6, 4.2]))       # beyond WHEELED_NEAR
+        self.assertIsNone(a.case_id)
 
 
 if __name__ == "__main__":

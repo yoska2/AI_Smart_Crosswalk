@@ -95,11 +95,11 @@ class VideoProcessor:
     # Alerts
     def _should_send(self, key, assessment, t: float) -> bool:
         """
-        One alert per person per case, re-sent only after a cooldown:
-          * first time a person gets a case            -> send
-          * level goes UP (Low -> Medium -> High)       -> send immediately
-          * a different case, same level (M1 -> M4)     -> after CASE_CHANGE_SECONDS
-          * the same case again                        -> only after LOW/ALERT_REPEAT_SECONDS
+        Calm de-dup - one alert per person, kept quiet unless things get worse:
+          * first time a person becomes risky           -> send
+          * level goes UP (Low -> Medium -> High)        -> send immediately (real escalation)
+          * otherwise (same level, ANY case)             -> only after a long cooldown
+        A different case at the same level no longer re-alerts - that was the noise.
         """
         prev = self._last_sent.get(key)
         if prev is None:
@@ -107,8 +107,6 @@ class VideoProcessor:
         prev_case, prev_level, t_prev = prev
         if LEVEL_RANK[assessment.level] > LEVEL_RANK[prev_level]:
             return True
-        if assessment.case_id != prev_case and LEVEL_RANK[assessment.level] == LEVEL_RANK[prev_level]:
-            return (t - t_prev) >= config.CASE_CHANGE_SECONDS
         cooldown = config.LOW_REPEAT_SECONDS if assessment.level == "Low" else config.ALERT_REPEAT_SECONDS
         return (t - t_prev) >= cooldown
 
@@ -128,8 +126,10 @@ class VideoProcessor:
             if not self._should_send(key, a, t):
                 continue
             self._last_sent[key] = (a.case_id, a.level, t)
+            # Only Medium/High alerts get a snapshot saved to Cloudinary (Low = no image, saves storage).
+            snapshot = self._snapshot(frame) if a.level in ("Medium", "High") else None
             event = RiskEvent(assessment=a, crosswalk_id=self.crosswalk_id, camera_id=self.camera_id,
-                              video_time=t, frame_index=frame_index, snapshot_base64=self._snapshot(frame))
+                              video_time=t, frame_index=frame_index, snapshot_base64=snapshot)
             self.events.append(replace(event, snapshot_base64=None))   # keep the summary light; the sender gets the image
             who = "group" if a.track_id == -1 else f"person #{a.track_id}"
             # Console line in English (Windows consoles often cannot print Hebrew); the Hebrew
@@ -157,6 +157,14 @@ class VideoProcessor:
             cv2.rectangle(frame, (int(o.x1), int(o.y1)), (int(o.x2), int(o.y2)), color, 2)
             caption = f"#{tr.track_id}" + (f" {a.case_id}" if a and a.case_id else "") + (" phone" if o.phone else "")
             cv2.putText(frame, caption, (int(o.x1) + 2, int(o.y1) - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.55, color, 2, cv2.LINE_AA)
+
+        # Top banner when a Medium/High alert is active, so it's obvious an alert fired.
+        active = [a for a in assessments if a.level in ("Medium", "High")]
+        if active:
+            worst = max(active, key=lambda a: LEVEL_RANK[a.level])
+            banner = f"ALERT: {worst.level.upper()} - {worst.case_id}"
+            cv2.rectangle(frame, (0, 0), (w, 34), (0, 0, 255), -1)
+            cv2.putText(frame, banner, (10, 24), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2, cv2.LINE_AA)
 
     # Per-frame work
     def _process_frame(self, frame, t: float, frame_index: int):
@@ -202,7 +210,13 @@ class VideoProcessor:
                 self.frames_analysed += 1
 
                 if self.show:
-                    cv2.imshow(config.WINDOW_NAME, frame)
+                    # Shrink only the DISPLAYED frame so tall videos fit the screen (processing is unaffected).
+                    disp = frame
+                    max_h = getattr(config, "SHOW_MAX_HEIGHT", None)
+                    if max_h and disp.shape[0] > max_h:
+                        scale = max_h / disp.shape[0]
+                        disp = cv2.resize(disp, (int(disp.shape[1] * scale), max_h), interpolation=cv2.INTER_AREA)
+                    cv2.imshow(config.WINDOW_NAME, disp)
                     if cv2.waitKey(1) & 0xFF == ord("q"):
                         print("[INFO] 'q' pressed - shutting down.")
                         break

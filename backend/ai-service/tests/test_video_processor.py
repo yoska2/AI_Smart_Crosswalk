@@ -13,6 +13,19 @@ from risk_rules import EdgeZone, RiskEngine
 from tracker import SimpleTracker
 from video_processor import VideoProcessor
 
+_saved_ref = None
+
+
+def setUpModule():
+    """Child-calibration OFF for these tests, regardless of what's committed in config.py."""
+    global _saved_ref
+    _saved_ref = config.ADULT_HEIGHT_REF
+    config.ADULT_HEIGHT_REF = None
+
+
+def tearDownModule():
+    config.ADULT_HEIGHT_REF = _saved_ref
+
 W, H, FPS = 640, 480, 10
 ZONE = EdgeZone([(0.0, 0.8), (1.0, 0.8), (1.0, 1.0), (0.0, 1.0)])      # zone line at y = 384
 PERSON_H, PERSON_W = 80, 30
@@ -78,15 +91,13 @@ class VideoTestCase(unittest.TestCase):
         summary = vp.run()
         return summary, sender.sent
 
-    def test_walker_approaching_gives_M1_then_M4_and_no_high(self):
-        # feet from y=200 to y=470 in 4 s: 270 px / 80 px = 3.4 h in 4 s = 0.84 h/s (walking)
+    def test_walker_approaching_is_low_and_no_high(self):
+        # feet from y=200 to y=470 in 4 s: 0.84 h/s (calm walk) -> normal crossing = all Low, no LEDs
         summary, sent = self.run_clip(scene(4.0, lambda t: 320, lambda t: 200 + 270 * t / 4.0))
         cases = [e.assessment.case_id for e in sent]
         self.assertIn("M1", cases)
-        self.assertIn("M4", cases)
-        self.assertFalse(any(e.assessment.level == "High" for e in sent))
+        self.assertTrue(all(e.assessment.level == "Low" for e in sent))   # calm walk never lights LEDs
         self.assertLessEqual(len(sent), 4, f"too many alerts for one walker: {summary['events']}")
-        self.assertLess(cases.index("M1"), cases.index("M4"))        # approach first, then stepping down
 
     def test_runner_gives_H1(self):
         # same 270 px in 1.0 s -> 3.4 h/s (running)
@@ -102,7 +113,7 @@ class VideoTestCase(unittest.TestCase):
         self.assertEqual(payload["severity"], "Low")
         self.assertFalse(payload["ledTriggered"])
         self.assertIsNone(payload["distanceFromCrosswalk"])          # no METERS_PER_H calibration
-        self.assertIn("imageBase64", payload)
+        self.assertNotIn("imageBase64", payload)                     # Low alerts carry no snapshot
 
     def test_standing_with_phone_is_L4_distracted(self):
         _summary, sent = self.run_clip(scene(3.0, lambda t: 320, lambda t: 360, phone=True))
