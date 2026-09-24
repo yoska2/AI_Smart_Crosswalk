@@ -112,7 +112,5 @@ API_URL = os.environ.get("API_URL", "http://localhost:3000/api/alerts")
 API_TIMEOUT_SECONDS = 5
 API_ENABLED = True                   # False = analyse only, print events, no HTTP
 MIN_FRAMES_FOR_ALERT = 3             # a person must be seen in >= 3 analysed frames before any alert (motion + phone need history)
-LOW_REPEAT_SECONDS = 30.0            # a person staying at Low is re-sent at most every 30 s (was 10 - too chatty)
-ALERT_REPEAT_SECONDS = 15.0          # a person staying at the same Medium/High level: at most every 15 s (was 3 - too chatty)
-CASE_CHANGE_SECONDS = 1.0            # a DIFFERENT case at the same level (e.g. M1 -> M4) is sent after 1 s
+INCIDENT_QUIET_SECONDS = 3.0         # one alert per crosswalk incident; it ends after this long with no risky person (then a new alert can fire)
 SNAPSHOT_JPEG_QUALITY = 70

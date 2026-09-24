@@ -2,7 +2,7 @@
 #             class VideoProcessor, _open/_release/_resize, drawing helpers, run() loop, DI for tests.
 #             [LIEL] adapted for Sprint 4: works with the MERGED detector (dicts) through tracker.py,
 #             analyses 1 of N frames, uses VIDEO time (frame/fps), replaces the single "inside ROI"
-#             rule with risk_rules.RiskEngine (12 cases), de-duplicates alerts per person, attaches a
+#             rule with risk_rules.RiskEngine (12 cases), de-duplicates alerts per crosswalk incident, attaches a
 #             JPEG snapshot, window is optional (default off: runs on a file, no desktop needed),
 #             run() returns a summary.
 """
@@ -27,7 +27,7 @@ import cv2
 
 import config
 from alert_sender import RiskEvent, build_alert_sender
-from risk_rules import LEVEL_RANK, RiskEngine
+from risk_rules import LEVEL_RANK, PRIORITY, RiskEngine
 from tracker import build_tracker
 
 
@@ -49,8 +49,8 @@ class VideoProcessor:
 
         self.cap: cv2.VideoCapture | None = None
         self.fps: float = 25.0
-        # De-duplication state per person: key -> (case_id, level, t_sent)
-        self._last_sent: dict = {}
+        # De-duplication state: the active incident at this crosswalk (or None)
+        self._incident: dict | None = None
         self.events: list[RiskEvent] = []
         self.frames_read = 0
         self.frames_analysed = 0
@@ -93,22 +93,31 @@ class VideoProcessor:
         return cv2.resize(frame, (config.PROCESS_WIDTH, int(h * scale)), interpolation=cv2.INTER_AREA)
 
     # Alerts
-    def _should_send(self, key, assessment, t: float) -> bool:
+    @staticmethod
+    def _severity(assessment) -> tuple[int, int]:
+        """Higher = worse: level first, then the case's place in PRIORITY (earlier = more severe)."""
+        return LEVEL_RANK[assessment.level], -PRIORITY.index(assessment.case_id)
+
+    def _should_send(self, assessment, t: float) -> bool:
         """
-        Calm de-dup - one alert per person, kept quiet unless things get worse:
-          * first time a person becomes risky           -> send
-          * level goes UP (Low -> Medium -> High)        -> send immediately (real escalation)
-          * otherwise (same level, ANY case)             -> only after a long cooldown
-        A different case at the same level no longer re-alerts - that was the noise.
+        One alert per crosswalk INCIDENT (not per person):
+          * no active incident                          -> send, start the incident
+          * a more severe level or case than so far     -> send (escalation)
+          * otherwise                                   -> stay quiet
+        The incident ends after config.INCIDENT_QUIET_SECONDS without any risky assessment.
         """
-        prev = self._last_sent.get(key)
-        if prev is None:
+        inc = self._incident
+        if inc is not None and (t - inc["last"]) >= config.INCIDENT_QUIET_SECONDS:
+            inc = self._incident = None
+        severity = self._severity(assessment)
+        if inc is None:
+            self._incident = {"severity": severity, "last": t}
             return True
-        prev_case, prev_level, t_prev = prev
-        if LEVEL_RANK[assessment.level] > LEVEL_RANK[prev_level]:
+        inc["last"] = t
+        if severity > inc["severity"]:
+            inc["severity"] = severity
             return True
-        cooldown = config.LOW_REPEAT_SECONDS if assessment.level == "Low" else config.ALERT_REPEAT_SECONDS
-        return (t - t_prev) >= cooldown
+        return False
 
     @staticmethod
     def _snapshot(frame) -> str | None:
@@ -116,16 +125,14 @@ class VideoProcessor:
         return base64.b64encode(buf).decode("ascii") if ok else None
 
     def _handle_assessments(self, assessments, frame, t: float, frame_index: int) -> None:
-        for a in assessments:
-            if a.level is None:
+        # Too early to judge: one or two frames say nothing about motion or a phone.
+        risky = [a for a in assessments if a.level is not None
+                 and (a.track_id == -1 or a.metadata.get("frames", 0) >= config.MIN_FRAMES_FOR_ALERT)]
+        if not risky:
+            return
+        for a in [max(risky, key=self._severity)]:       # at most one alert per frame: the most severe
+            if not self._should_send(a, t):
                 continue
-            # Too early to judge: one or two frames say nothing about motion or a phone.
-            if a.track_id != -1 and a.metadata.get("frames", 0) < config.MIN_FRAMES_FOR_ALERT:
-                continue
-            key = "group" if a.track_id == -1 else a.track_id
-            if not self._should_send(key, a, t):
-                continue
-            self._last_sent[key] = (a.case_id, a.level, t)
             # Only Medium/High alerts get a snapshot saved to Cloudinary (Low = no image, saves storage).
             snapshot = self._snapshot(frame) if a.level in ("Medium", "High") else None
             event = RiskEvent(assessment=a, crosswalk_id=self.crosswalk_id, camera_id=self.camera_id,
