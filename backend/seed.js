@@ -9,9 +9,12 @@
  * Run once with:  node seed.js
  */
 import dotenv from 'dotenv';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import fs from 'fs';
 import mongoose from 'mongoose';
 import connectDB from './config/db.js';
+import User from './models/user.js';
 import Crosswalk from './models/crosswalk.js';
 import Camera from './models/camera.js';
 import LED from './models/led.js';
@@ -32,9 +35,32 @@ const seedIfEmpty = async (Model, docs, name) => {
     console.log(`- ${name}: inserted ${docs.length} docs`);
 };
 
+// There is no public registration, so the first Admin must be seeded.
+// Credentials come from .env: ADMIN_USERNAME, ADMIN_PASSWORD (>= 6 chars), optional ADMIN_NAME.
+const seedFirstAdmin = async () => {
+    if (await User.exists({ role: 'Admin' })) {
+        console.log('- admin: an Admin already exists, skipping');
+        return;
+    }
+    const { ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_NAME } = process.env;
+    if (!ADMIN_USERNAME || !ADMIN_PASSWORD || ADMIN_PASSWORD.length < 6) {
+        console.log('- admin: NOT created - set ADMIN_USERNAME and ADMIN_PASSWORD (>= 6 chars) in .env and re-run');
+        return;
+    }
+    await User.create({
+        id: crypto.randomUUID(),
+        name: ADMIN_NAME || 'Admin',
+        username: ADMIN_USERNAME,
+        passwordHash: await bcrypt.hash(ADMIN_PASSWORD, 10),
+        role: 'Admin',
+    });
+    console.log(`- admin: created "${ADMIN_USERNAME}"`);
+};
+
 const run = async () => {
     await connectDB();
 
+    await seedFirstAdmin();
     await seedIfEmpty(Crosswalk, data.crosswalks, 'crosswalks');
     await seedIfEmpty(Camera, data.cameras, 'cameras');
     await seedIfEmpty(LED, data.leds, 'leds');

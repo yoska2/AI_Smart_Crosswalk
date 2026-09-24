@@ -55,7 +55,7 @@ app.use('/api/alerts', alertRoutes);
 app.use('/api/crosswalks', crosswalkRoutes);
 app.use('/api/cameras', cameraRoutes);
 app.use('/api/leds', ledRoutes);
-app.use('/api/users', userRoutes);        // register + login
+app.use('/api/users', userRoutes);        // login + Admin user management
 app.use('/api/detect', detectRoutes);     // POST /  (one image -> detections), Yossef's route, was never mounted
 
 // Start listening
