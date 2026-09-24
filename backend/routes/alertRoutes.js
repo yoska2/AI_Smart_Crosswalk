@@ -13,7 +13,6 @@
  */
 import express from 'express';
 import { createAlert, fetchAllAlerts, updateAlert } from '../services/alertService.js';
-import { getIO } from '../config/socket.js';
 
 const router = express.Router();
 
@@ -45,9 +44,7 @@ router.put('/:id', async (req, res) => {
             return res.status(404).json({ message: 'Alert not found' });
         }
 
-        // Emit live update to all connected frontend clients via Socket.io
-        getIO().emit('alertUpdated', updated);
-
+        // No manual emit: the change stream in config/socket.js pushes 'alertUpdated' to the frontend.
         res.json(updated);
     } catch (error) {
         res.status(400).json({ message: error.message });
