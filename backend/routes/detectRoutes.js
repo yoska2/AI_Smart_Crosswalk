@@ -10,7 +10,7 @@ import detectService from "../services/detectService.js";
 
 const router = express.Router();                            
 
-// [CHANGED] no authMiddleware here (decision: internal call, public for now).
-router.post("/", detectService.detectObjects);             // [YOSSEF] (minus auth)
+
+router.post("/", detectService.detectObjects);             
 
 export default router;                                      
