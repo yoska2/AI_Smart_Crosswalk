@@ -1,13 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 function AdminDashboard() {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
-  
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [users, setUsers] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // הוספנו שדה password בתוך מצב הטופס (formData)
   const [formData, setFormData] = useState({
     name: '',
     username: '',
@@ -15,39 +15,96 @@ function AdminDashboard() {
     role: 'Dispatcher'
   });
 
-  const [users, setUsers] = useState([
-    { id: '1', name: 'ישראל ישראלי', username: 'israel123', role: 'Dispatcher', lastLogin: 'אתמול', status: 'active' },
-    { id: '2', name: 'שרה כהן', username: 'sarah_c', role: 'Manager', lastLogin: 'לפני יומיים', status: 'active' }
-  ]);
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL;
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${apiUrl}/users`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUsers(data);
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUsers();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/');
   };
 
-  const handleDeleteUser = (id) => {
+  const handleDeleteUser = async (id) => {
     if (window.confirm('האם אתה בטוח שברצונך למחוק משתמש זה? פעולה זו בלתי הפיכה.')) {
-      setUsers(users.filter(user => user.id !== id));
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL;
+        const token = localStorage.getItem('token');
+        
+        const response = await fetch(`${apiUrl}/users/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.ok) {
+          setUsers(users.filter(user => user.id !== id && user._id !== id));
+        } else {
+          alert('שגיאה במחיקת המשתמש מול השרת.');
+        }
+      } catch (error) {
+        console.error(error);
+      }
     }
   };
   
-  const handleToggleStatus = (id) => {
-    setUsers(users.map(user => {
-      if (user.id === id) {
-        return { ...user, status: user.status === 'active' ? 'suspended' : 'active' };
+  const handleToggleStatus = async (id, currentStatus) => {
+    const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
+    
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${apiUrl}/users/${id}`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (response.ok) {
+        setUsers(users.map(user => 
+          (user.id === id || user._id === id) ? { ...user, status: newStatus } : user
+        ));
+      } else {
+        alert('שגיאה בעדכון סטטוס המשתמש מול השרת.');
       }
-      return user;
-    }));
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  const handleCreateUser = (e) => {
+  const handleCreateUser = async (e) => {
     e.preventDefault();
     
     const trimmedName = formData.name.trim();
     const trimmedUsername = formData.username.trim().toLowerCase();
     const trimmedPassword = formData.password.trim();
 
-    // 1. בדיקת שם מלא (לפחות שתי מילים)
     if (!trimmedName.includes(' ')) {
       alert('נא להזין שם מלא הכולל לפחות שתי שמות (שם פרטי ומשפחה)');
       return;
@@ -58,33 +115,47 @@ function AdminDashboard() {
       return;
     }
 
-    // 2. בדיקת אורך סיסמה שהאדמין הזין
     if (trimmedPassword.length < 6) {
       alert('הסיסמה שהאדמין הגדיר חייבת להכיל לפחות 6 תווים.');
       return;
     }
 
-    // 3. בדיקת כפילות בפרונטאנד מול כל המשתמשים הקיימים ברשימה
-    const isUsernameTaken = users.some(user => user.username.trim().toLowerCase() === trimmedUsername);
-    if (isUsernameTaken) {
-      alert(`שם המשתמש "${trimmedUsername}" כבר תפוס במערכת! יש לבחור שם משתמש ייחודי.`);
-      return;
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const token = localStorage.getItem('token');
+      
+      const response = await fetch(`${apiUrl}/users/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          name: trimmedName,
+          username: trimmedUsername,
+          password: trimmedPassword,
+          role: formData.role
+        })
+      });
+
+      if (response.status === 400 || response.status === 409) {
+        alert(`שם המשתמש "${trimmedUsername}" כבר תפוס במערכת! יש לבחור שם משתמש ייחודי.`);
+        return;
+      }
+
+      if (response.ok) {
+        const newUserFromDB = await response.json();
+        setUsers([...users, newUserFromDB]);
+        setFormData({ name: '', username: '', password: '', role: 'Dispatcher' });
+        setIsModalOpen(false);
+      } else {
+        alert('אירעה שגיאה ביצירת המשתמש מול השרת.');
+      }
+      
+    } catch (error) {
+      console.error(error);
+      alert('שגיאת תקשורת מול השרת.');
     }
-
-    // הוספת המשתמש החדש (כולל הסיסמה שהאדמין בחר עבורו)
-    const newUser = {
-      id: Date.now().toString(),
-      name: trimmedName,
-      username: trimmedUsername,
-      password: trimmedPassword, // נשמר לצורך תשתית / בקאנד
-      role: formData.role,
-      lastLogin: 'טרם התחבר',
-      status: 'active'
-    };
-
-    setUsers([...users, newUser]);
-    setFormData({ name: '', username: '', password: '', role: 'Dispatcher' });
-    setIsModalOpen(false);
   };
 
   const getRoleBadge = (role) => {
@@ -98,15 +169,15 @@ function AdminDashboard() {
   };
 
   const filteredUsers = users.filter(user => 
-    user.name.includes(searchTerm) || 
-    user.username.includes(searchTerm) ||
-    user.id.includes(searchTerm)
+    (user.name && user.name.includes(searchTerm)) || 
+    (user.username && user.username.includes(searchTerm)) ||
+    (user.id && user.id.includes(searchTerm)) ||
+    (user._id && user._id.includes(searchTerm))
   );
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-slate-50 font-sans" dir="rtl">
       
-      {/* תפריט צד נקי */}
       <aside className="w-full md:w-64 bg-slate-900 text-white p-4 md:p-6 flex flex-col md:justify-between shadow-2xl z-20 shrink-0 md:h-full">
         <div>
           <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-8 text-center border-b border-slate-700 pb-4 text-purple-400">
@@ -147,110 +218,117 @@ function AdminDashboard() {
           </button>
         </header>
 
-        <div className="flex flex-col gap-4 md:gap-6 flex-1">
-
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 shrink-0 mb-2 md:mb-4">
-              <div className="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
-                  <div>
-                    <div className="text-slate-500 text-xs md:text-sm font-bold mb-1">סה"כ משתמשים רשומים</div>
-                    <div className="text-2xl md:text-3xl font-black text-slate-800">{users.length}</div>
-                  </div>
-                  <div className="text-3xl md:text-4xl opacity-20">👥</div>
-              </div>
-              <div className="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
-                  <div>
-                    <div className="text-slate-500 text-xs md:text-sm font-bold mb-1">משתמשים פעילים</div>
-                    <div className="text-2xl md:text-3xl font-black text-green-600">
-                        {users.filter(u => u.status === 'active').length}
-                    </div>
-                  </div>
-                  <div className="text-3xl md:text-4xl opacity-20">✅</div>
-              </div>
-              <div className="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
-                  <div>
-                    <div className="text-slate-500 text-xs md:text-sm font-bold mb-1">משתמשים מושהים</div>
-                    <div className="text-2xl md:text-3xl font-black text-red-500">
-                        {users.filter(u => u.status === 'suspended').length}
-                    </div>
-                  </div>
-                  <div className="text-3xl md:text-4xl opacity-20">🔒</div>
-              </div>
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center flex-1">
+            <div className="w-10 h-10 border-4 border-slate-200 border-t-purple-600 rounded-full animate-spin mb-3"></div>
+            <span className="text-slate-500 text-sm font-medium">טוען משתמשים מהשרת...</span>
           </div>
+        ) : (
+          <div className="flex flex-col gap-4 md:gap-6 flex-1">
 
-          <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col flex-1 overflow-hidden">
-              <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                  <span>רשימת משתמשים והרשאות</span>
-                  <input 
-                      type="text" 
-                      placeholder="חיפוש משתמש או מזהה..." 
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="p-2 px-3 border border-slate-300 rounded text-sm outline-none focus:border-purple-500 w-full sm:w-64 font-normal"
-                  />
-              </div>
-              
-              <div className="overflow-x-auto">
-                  <table className="w-full text-right min-w-[800px]">
-                      <thead className="bg-white border-b-2 border-slate-200 text-slate-500 text-sm">
-                          <tr>
-                              <th className="p-4 font-bold">מזהה</th>
-                              <th className="p-4 font-bold">שם מלא</th>
-                              <th className="p-4 font-bold">שם משתמש (Login)</th>
-                              <th className="p-4 font-bold">תפקיד / הרשאה</th>
-                              <th className="p-4 font-bold">התחברות אחרונה</th>
-                              <th className="p-4 font-bold">סטטוס</th>
-                              <th className="p-4 font-bold text-center">פעולות אדמין</th>
-                          </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100">
-                          {filteredUsers.map((user) => (
-                              <tr key={user.id} className={`hover:bg-slate-50 transition ${user.status === 'suspended' ? 'bg-red-50/30' : ''}`}>
-                                  <td className="p-4 font-mono text-sm text-slate-500">{user.id}</td>
-                                  <td className="p-4 font-bold text-slate-800">{user.name}</td>
-                                  <td className="p-4 text-slate-600 font-mono text-sm">{user.username}</td>
-                                  <td className="p-4">{getRoleBadge(user.role)}</td>
-                                  <td className="p-4 text-sm text-slate-500">{user.lastLogin}</td>
-                                  <td className="p-4">
-                                      {user.status === 'active' ? (
-                                          <span className="text-green-600 font-bold text-xs flex items-center gap-1 whitespace-nowrap">🟢 פעיל</span>
-                                      ) : (
-                                          <span className="text-red-500 font-bold text-xs flex items-center gap-1 whitespace-nowrap">🔴 מושהה</span>
-                                      )}
-                                  </td>
-                                  <td className="p-4 text-center">
-                                      <div className="flex items-center justify-center gap-3 text-sm">
-                                          <button 
-                                              onClick={() => handleToggleStatus(user.id)}
-                                              className={`${user.status === 'active' ? 'text-orange-500 hover:text-orange-700' : 'text-green-600 hover:text-green-800'} font-bold transition whitespace-nowrap`}
-                                          >
-                                              {user.status === 'active' ? 'השהה' : 'הפעל'}
-                                          </button>
-                                          <button 
-                                              onClick={() => handleDeleteUser(user.id)}
-                                              className="text-red-600 hover:text-red-800 font-bold transition"
-                                          >
-                                              מחק
-                                          </button>
-                                      </div>
-                                  </td>
-                              </tr>
-                          ))}
-                          {filteredUsers.length === 0 && (
-                              <tr>
-                                  <td colSpan="7" className="p-8 text-center text-slate-500">
-                                      לא נמצאו משתמשים התואמים לחיפוש.
-                                  </td>
-                              </tr>
-                          )}
-                      </tbody>
-                  </table>
-              </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 shrink-0 mb-2 md:mb-4">
+                <div className="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                      <div className="text-slate-500 text-xs md:text-sm font-bold mb-1">סה"כ משתמשים רשומים</div>
+                      <div className="text-2xl md:text-3xl font-black text-slate-800">{users.length}</div>
+                    </div>
+                    <div className="text-3xl md:text-4xl opacity-20">👥</div>
+                </div>
+                <div className="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                      <div className="text-slate-500 text-xs md:text-sm font-bold mb-1">משתמשים פעילים</div>
+                      <div className="text-2xl md:text-3xl font-black text-green-600">
+                          {users.filter(u => u.status === 'active').length}
+                      </div>
+                    </div>
+                    <div className="text-3xl md:text-4xl opacity-20">✅</div>
+                </div>
+                <div className="bg-white p-4 md:p-5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between">
+                    <div>
+                      <div className="text-slate-500 text-xs md:text-sm font-bold mb-1">משתמשים מושהים</div>
+                      <div className="text-2xl md:text-3xl font-black text-red-500">
+                          {users.filter(u => u.status === 'suspended').length}
+                      </div>
+                    </div>
+                    <div className="text-3xl md:text-4xl opacity-20">🔒</div>
+                </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-md border border-slate-200 flex flex-col flex-1 overflow-hidden">
+                <div className="bg-slate-50 p-4 border-b border-slate-200 font-bold text-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <span>רשימת משתמשים והרשאות</span>
+                    <input 
+                        type="text" 
+                        placeholder="חיפוש משתמש או מזהה..." 
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="p-2 px-3 border border-slate-300 rounded text-sm outline-none focus:border-purple-500 w-full sm:w-64 font-normal"
+                    />
+                </div>
+                
+                <div className="overflow-x-auto">
+                    <table className="w-full text-right min-w-[800px]">
+                        <thead className="bg-white border-b-2 border-slate-200 text-slate-500 text-sm">
+                            <tr>
+                                <th className="p-4 font-bold">מזהה</th>
+                                <th className="p-4 font-bold">שם מלא</th>
+                                <th className="p-4 font-bold">שם משתמש (Login)</th>
+                                <th className="p-4 font-bold">תפקיד / הרשאה</th>
+                                <th className="p-4 font-bold">התחברות אחרונה</th>
+                                <th className="p-4 font-bold">סטטוס</th>
+                                <th className="p-4 font-bold text-center">פעולות אדמין</th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-100">
+                            {filteredUsers.map((user) => {
+                                const userId = user._id || user.id;
+                                return (
+                                <tr key={userId} className={`hover:bg-slate-50 transition ${user.status === 'suspended' ? 'bg-red-50/30' : ''}`}>
+                                    <td className="p-4 font-mono text-sm text-slate-500">{userId ? userId.substring(0, 8) + '...' : ''}</td>
+                                    <td className="p-4 font-bold text-slate-800">{user.name}</td>
+                                    <td className="p-4 text-slate-600 font-mono text-sm">{user.username}</td>
+                                    <td className="p-4">{getRoleBadge(user.role)}</td>
+                                    <td className="p-4 text-sm text-slate-500">{user.lastLogin || 'טרם התחבר'}</td>
+                                    <td className="p-4">
+                                        {user.status === 'active' ? (
+                                            <span className="text-green-600 font-bold text-xs flex items-center gap-1 whitespace-nowrap">🟢 פעיל</span>
+                                        ) : (
+                                            <span className="text-red-500 font-bold text-xs flex items-center gap-1 whitespace-nowrap">🔴 מושהה</span>
+                                        )}
+                                    </td>
+                                    <td className="p-4 text-center">
+                                        <div className="flex items-center justify-center gap-3 text-sm">
+                                            <button 
+                                                onClick={() => handleToggleStatus(userId, user.status)}
+                                                className={`${user.status === 'active' ? 'text-orange-500 hover:text-orange-700' : 'text-green-600 hover:text-green-800'} font-bold transition whitespace-nowrap`}
+                                            >
+                                                {user.status === 'active' ? 'השהה' : 'הפעל'}
+                                            </button>
+                                            <button 
+                                                onClick={() => handleDeleteUser(userId)}
+                                                className="text-red-600 hover:text-red-800 font-bold transition"
+                                            >
+                                                מחק
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )})}
+                            {filteredUsers.length === 0 && (
+                                <tr>
+                                    <td colSpan="7" className="p-8 text-center text-slate-500">
+                                        לא נמצאו משתמשים התואמים לחיפוש.
+                                    </td>
+                                </tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
           </div>
-
-        </div>
+        )}
       </main>
 
-      {/* חלונית (Modal) יצירת משתמש חדש */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200">
@@ -289,7 +367,6 @@ function AdminDashboard() {
                 />
               </div>
 
-              {/* שדה סיסמה חדש שנוסף עבור האדמין */}
               <div>
                 <label className="block text-sm font-bold text-slate-700 mb-1">סיסמה זמנית (לפחות 6 תווים)</label>
                 <input 
@@ -335,7 +412,6 @@ function AdminDashboard() {
           </div>
         </div>
       )}
-
     </div>
   );
 }

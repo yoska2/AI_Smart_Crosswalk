@@ -61,7 +61,9 @@ function DispatcherDashboard() {
 
     fetchInitialData();
 
-    const socket = io('https://ai-smart-crosswalk-63s1.onrender.com');
+    const apiUrl = import.meta.env.VITE_API_URL;
+    const socketUrl = apiUrl.replace('/api', ''); 
+    const socket = io(socketUrl);
 
     socket.on('newAlert', (newAlertData) => {
       setAlerts((prevAlerts) => [newAlertData, ...prevAlerts]);

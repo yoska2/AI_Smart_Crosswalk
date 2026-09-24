@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { io } from 'socket.io-client'; 
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line 
@@ -13,12 +14,12 @@ function ManagerDashboard() {
   const [crosswalks, setCrosswalks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // שליפת נתונים אמיתיים מה-DB דרך השרת בעת טעינת העמוד
   useEffect(() => {
+    const apiUrl = import.meta.env.VITE_API_URL;
+
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const apiUrl = import.meta.env.VITE_API_URL;
         const [alertsRes, crosswalksRes] = await Promise.all([
           fetch(`${apiUrl}/alerts`),
           fetch(`${apiUrl}/crosswalks`)
@@ -38,10 +39,26 @@ function ManagerDashboard() {
     };
 
     fetchData();
+
+    const socketUrl = apiUrl.replace('/api', ''); 
+    const socket = io(socketUrl);
+
+    socket.on('newAlert', (newAlertData) => {
+      setAlerts((prevAlerts) => [newAlertData, ...prevAlerts]);
+    });
+
+    socket.on('alertUpdated', (updatedAlert) => {
+      setAlerts((prevAlerts) => 
+        prevAlerts.map(alert => 
+          alert._id === updatedAlert._id ? updatedAlert : alert
+        )
+      );
+    });
+
+    return () => socket.disconnect();
   }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
     navigate('/');
   };
 
@@ -49,18 +66,15 @@ function ManagerDashboard() {
     window.print();
   };
 
-  // --- עיבוד נתונים לגרפים מתוך ה-DB ---
+  const resolvedAlerts = alerts.filter(alert => alert.isResolved === true);
 
-  // 1. נתוני כרטיסיות עליונות (KPIs)
-  const totalAlertsCount = alerts.length;
-  const highRiskCount = alerts.filter(a => (a.confidence || 0) >= 90 || a.severity?.toLowerCase() === 'high').length;
+  const totalAlertsCount = resolvedAlerts.length;
+  const highRiskCount = resolvedAlerts.filter(a => (a.confidence || 0) >= 90 || a.severity?.toLowerCase() === 'high').length;
   const activeCrosswalksCount = crosswalks.filter(cw => cw.isActive || cw.status === 'active').length;
   const totalCrosswalksCount = crosswalks.length;
 
-  // 2. פילוח צמתים לגרף עמודות (BarChart)
-  // אנחנו מקבצים את ההתרעות לפי מיקום הצומת וסופרים את סוגי הזיהויים (ילדים, מבוגרים, רכבים)
   const intersectionMap = {};
-  alerts.forEach(alert => {
+  resolvedAlerts.forEach(alert => {
     const loc = alert.location || 'צומת לא ידוע';
     if (!intersectionMap[loc]) {
       intersectionMap[loc] = { name: loc, children: 0, adults: 0, vehicles: 0, total: 0 };
@@ -71,7 +85,7 @@ function ManagerDashboard() {
     } else if (type === 'adult' || type === 'adults') {
       intersectionMap[loc].adults += 1;
     } else {
-      intersectionMap[loc].vehicles += 1; // ברירת מחדל או רכבים
+      intersectionMap[loc].vehicles += 1;
     }
     intersectionMap[loc].total += 1;
   });
@@ -84,16 +98,14 @@ function ManagerDashboard() {
       .sort((a, b) => b.total - a.total)
       .slice(0, 5);
   } else if (intersectionFilter === 'school') {
-    // סינון לדוגמה אם יש צמתים שמוגדרים כבית ספר
     displayData = allTargetTypeData.filter(d => d.name.includes('בית ספר') || d.name.includes('היובל'));
-    if (displayData.length === 0) displayData = allTargetTypeData.slice(0, 3); // גיבוי אם אין שמות מתאימים
+    if (displayData.length === 0) displayData = allTargetTypeData.slice(0, 3);
   }
 
-  // 3. מגמת עומס אירועים שבועית (LineChart)
   const daysMap = { 0: 'ראשון', 1: 'שני', 2: 'שלישי', 3: 'רביעי', 4: 'חמישי', 5: 'שישי', 6: 'שבת' };
   const weeklyCounts = { 'ראשון': 0, 'שני': 0, 'שלישי': 0, 'רביעי': 0, 'חמישי': 0, 'שישי': 0, 'שבת': 0 };
   
-  alerts.forEach(alert => {
+  resolvedAlerts.forEach(alert => {
     if (alert.timestamp) {
       const dayIndex = new Date(alert.timestamp).getDay();
       const dayName = daysMap[dayIndex];
@@ -108,10 +120,9 @@ function ManagerDashboard() {
     safetyAlerts: weeklyCounts[day]
   }));
 
-  // 4. פילוח חומרת אירועים (PieChart)
-  const highSev = alerts.filter(a => a.severity?.toLowerCase() === 'high').length;
-  const medSev = alerts.filter(a => a.severity?.toLowerCase() === 'medium').length;
-  const lowSev = alerts.filter(a => !a.severity || a.severity?.toLowerCase() === 'low').length;
+  const highSev = resolvedAlerts.filter(a => a.severity?.toLowerCase() === 'high').length;
+  const medSev = resolvedAlerts.filter(a => a.severity?.toLowerCase() === 'medium').length;
+  const lowSev = resolvedAlerts.filter(a => !a.severity || a.severity?.toLowerCase() === 'low').length;
 
   const severityData = [
     { name: 'קריטי', value: highSev || 1 },
@@ -124,7 +135,6 @@ function ManagerDashboard() {
   return (
     <div className="flex flex-col md:flex-row h-screen bg-slate-100 font-sans" dir="rtl">
       
-      {/* תפריט צד */}
       <aside className="w-full md:w-64 bg-slate-900 text-white p-4 md:p-6 flex flex-col md:justify-between shadow-xl z-20 shrink-0 md:h-full print:hidden">
         <div>
           <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-8 text-center border-b border-slate-700 pb-4">
@@ -166,7 +176,6 @@ function ManagerDashboard() {
           </div>
         </header>
 
-        {/* כרטיסיות נתונים מחוברות ל-DB */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
             <div className="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center">
                 <span className="text-slate-500 text-xs md:text-sm font-bold">אירועי AI</span>
@@ -192,85 +201,86 @@ function ManagerDashboard() {
             <span className="text-slate-500 text-sm font-medium">טוען נתונים מהשרת עבור המנהל...</span>
           </div>
         ) : (
-          <>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
-                
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[22rem] flex flex-col">
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-                        <h3 className="font-bold text-slate-700 text-sm md:text-base">
-                            {intersectionFilter === 'top5' ? '5 הצמתים עם כמות אירועי הסכנה הגבוהה ביותר' : 
-                             intersectionFilter === 'school' ? 'אירועי סכנה בקרבת מוסדות חינוך' : 'אירועי סכנה בכלל הצמתים'}
-                        </h3>
-                        <select 
-                            value={intersectionFilter}
-                            onChange={(e) => setIntersectionFilter(e.target.value)}
-                            className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-600 outline-none focus:border-blue-500 cursor-pointer w-full sm:w-auto print:hidden"
-                        >
-                            <option value="top5">🔥 5 המסוכנים ביותר</option>
-                            <option value="school">🏫 סביבת מוסדות חינוך</option>
-                            <option value="all">🚦 כל הצמתים</option>
-                        </select>
-                    </div>
-                    <div className="flex-1 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={displayData} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                <XAxis dataKey="name" tick={{fill: '#64748b', fontSize: 11}} />
-                                <YAxis tick={{fill: '#64748b', fontSize: 11}} />
-                                <Tooltip cursor={{fill: '#f1f5f9'}} />
-                                <Legend wrapperStyle={{fontSize: '11px'}} />
-                                <Bar dataKey="children" name="ילדים" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="adults" name="מבוגרים" fill="#94a3b8" radius={[4, 4, 0, 0]} />
-                                <Bar dataKey="vehicles" name="רכבים" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 pb-6">
+              
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[22rem] flex flex-col">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                      <h3 className="font-bold text-slate-700 text-sm md:text-base">
+                          {intersectionFilter === 'top5' ? '5 הצמתים עם כמות אירועי הסכנה הגבוהה ביותר' : 
+                           intersectionFilter === 'school' ? 'אירועי סכנה בקרבת מוסדות חינוך' : 'אירועי סכנה בכלל הצמתים'}
+                      </h3>
+                      <select 
+                          value={intersectionFilter}
+                          onChange={(e) => setIntersectionFilter(e.target.value)}
+                          className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-600 outline-none focus:border-blue-500 cursor-pointer w-full sm:w-auto print:hidden"
+                      >
+                          <option value="top5">🔥 5 המסוכנים ביותר</option>
+                          <option value="school">🏫 סביבת מוסדות חינוך</option>
+                          <option value="all">🚦 כל הצמתים</option>
+                      </select>
+                  </div>
+                  <div className="flex-1 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={displayData} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                              <XAxis dataKey="name" tick={{fill: '#64748b', fontSize: 11}} />
+                              <YAxis tick={{fill: '#64748b', fontSize: 11}} />
+                              <Tooltip cursor={{fill: '#f1f5f9'}} />
+                              <Legend wrapperStyle={{fontSize: '11px'}} />
+                              <Bar dataKey="children" name="ילדים" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                              <Bar dataKey="adults" name="מבוגרים" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                              <Bar dataKey="vehicles" name="רכבים" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                      </ResponsiveContainer>
+                  </div>
+              </div>
 
-                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[22rem] flex flex-col">
-                    <h3 className="font-bold text-slate-700 mb-1 text-sm md:text-base">מגמת עומס אירועי בטיחות (שבועי)</h3>
-                    <p className="text-xs text-slate-500 mb-4">משקף סכנות מבוססות AI בלבד</p>
-                    <div className="flex-1 w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                            <LineChart data={weeklySafetyAlertsData} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
-                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                <XAxis dataKey="name" tick={{fill: '#64748b', fontSize: 11}} />
-                                <YAxis tick={{fill: '#64748b', fontSize: 11}} />
-                                <Tooltip />
-                                <Line type="monotone" dataKey="safetyAlerts" name="כמות אירועי סכנה" stroke="#8b5cf6" strokeWidth={3} dot={{r: 4, fill: '#8b5cf6'}} activeDot={{r: 6}} />
-                            </LineChart>
-                        </ResponsiveContainer>
-                    </div>
-                </div>
-                
-            </div>
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[22rem] flex flex-col">
+                  <h3 className="font-bold text-slate-700 mb-1 text-sm md:text-base">מגמת עומס אירועי בטיחות (שבועי)</h3>
+                  <p className="text-xs text-slate-500 mb-4">משקף סכנות מבוססות AI בלבד</p>
+                  <div className="flex-1 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={weeklySafetyAlertsData} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
+                              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                              <XAxis dataKey="name" tick={{fill: '#64748b', fontSize: 11}} />
+                              <YAxis tick={{fill: '#64748b', fontSize: 11}} />
+                              <Tooltip />
+                              <Line type="monotone" dataKey="safetyAlerts" name="כמות אירועי סכנה" stroke="#8b5cf6" strokeWidth={3} dot={{r: 4, fill: '#8b5cf6'}} activeDot={{r: 6}} />
+                          </LineChart>
+                      </ResponsiveContainer>
+                  </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[22rem] flex flex-col lg:col-span-2">
+                  <h3 className="font-bold text-slate-700 mb-2 text-sm md:text-base">פילוח חומרת אירועים (מבוסס אחוזי סיכון ה-AI)</h3>
+                  <div className="flex-1 w-full flex justify-center items-center">
+                      <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                              <Pie
+                                  data={severityData}
+                                  cx="50%"
+                                  cy="45%"
+                                  innerRadius={55}
+                                  outerRadius={75}
+                                  paddingAngle={5}
+                                  dataKey="value"
+                              >
+                                  {severityData.map((entry, index) => (
+                                      <Cell key={`cell-${index}`} fill={severityColors[index % severityColors.length]} />
+                                  ))}
+                              </Pie>
+                              <Tooltip />
+                              <Legend 
+                                  verticalAlign="bottom" 
+                                  height={36} 
+                                  formatter={(value, entry) => <span className="text-slate-700 font-medium text-xs md:text-sm mx-2">{value}</span>}
+                              />
+                          </PieChart>
+                      </ResponsiveContainer>
+                  </div>
+              </div>
 
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[22rem] flex flex-col w-full lg:w-1/2">
-                <h3 className="font-bold text-slate-700 mb-4 text-sm md:text-base">פילוח חומרת אירועים (מבוסס אחוזי סיכון ה-AI)</h3>
-                <div className="flex-1 w-full flex justify-center items-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <PieChart>
-                            <Pie
-                                data={severityData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={50}
-                                outerRadius={70}
-                                paddingAngle={5}
-                                dataKey="value"
-                                label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
-                                labelLine={false}
-                            >
-                                {severityData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill={severityColors[index % severityColors.length]} />
-                                ))}
-                            </Pie>
-                            <Tooltip />
-                        </PieChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-          </>
+          </div>
         )}
 
       </main>
