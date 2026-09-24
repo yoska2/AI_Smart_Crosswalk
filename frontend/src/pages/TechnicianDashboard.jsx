@@ -6,6 +6,7 @@ import 'leaflet/dist/leaflet.css';
 
 import icon from 'leaflet/dist/images/marker-icon.png';
 import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
 let DefaultIcon = L.icon({
   iconUrl: icon,
   shadowUrl: iconShadow,
@@ -31,7 +32,7 @@ function TechnicianDashboard() {
   return (
     <div className="flex flex-col md:flex-row h-screen bg-slate-100 font-sans" dir="rtl">
       
-      {/* תפריט צד מותאם למובייל */}
+      {/* תפריט צד נקי - הוסר מלאי חלפים */}
       <aside className="w-full md:w-64 bg-slate-800 text-white p-4 md:p-6 flex flex-col md:justify-between shadow-xl z-20 shrink-0 md:h-full">
         <div>
           <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-8 text-center border-b border-slate-700 pb-4">
@@ -40,9 +41,6 @@ function TechnicianDashboard() {
           <nav className="flex flex-row md:flex-col gap-2 md:gap-3 text-slate-300 overflow-x-auto pb-2 md:pb-0 whitespace-nowrap">
             <button className="text-right text-white bg-slate-700 px-4 py-2 md:p-3 rounded font-medium transition shadow-sm border border-slate-600 flex items-center gap-2 text-sm md:text-base">
               🔧 קריאות שירות
-            </button>
-            <button className="text-right hover:text-white hover:bg-slate-700 px-4 py-2 md:p-3 rounded transition flex items-center gap-2 text-sm md:text-base">
-              📦 מלאי חלפים
             </button>
           </nav>
         </div>
@@ -148,14 +146,14 @@ function TechnicianDashboard() {
                                   <td className="p-4 text-center">
                                       <div className="flex items-center justify-center gap-2">
                                           {cw.lat && cw.lng && (
-                                            <a 
-                                                href={`https://waze.com/ul?ll=${cw.lat},${cw.lng}&navigate=yes`}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded text-xs font-bold border border-blue-200 transition inline-block whitespace-nowrap"
-                                            >
-                                                📍 נווט ב-Waze
-                                            </a>
+                                              <a 
+                                                  href={`https://waze.com/ul?ll=${cw.lat},${cw.lng}&navigate=yes`}
+                                                  target="_blank"
+                                                  rel="noreferrer"
+                                                  className="bg-blue-100 hover:bg-blue-200 text-blue-700 px-3 py-1.5 rounded text-xs font-bold border border-blue-200 transition inline-block whitespace-nowrap"
+                                              >
+                                                  📍 נווט ב-Waze
+                                              </a>
                                           )}
                                           <button 
                                               onClick={() => handleFixHardware(cw._id)}

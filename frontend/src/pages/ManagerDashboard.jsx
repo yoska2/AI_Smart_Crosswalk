@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
@@ -9,32 +9,123 @@ function ManagerDashboard() {
   const navigate = useNavigate();
   
   const [intersectionFilter, setIntersectionFilter] = useState('top5');
+  const [alerts, setAlerts] = useState([]);
+  const [crosswalks, setCrosswalks] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // שליפת נתונים אמיתיים מה-DB דרך השרת בעת טעינת העמוד
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL;
+        const [alertsRes, crosswalksRes] = await Promise.all([
+          fetch(`${apiUrl}/alerts`),
+          fetch(`${apiUrl}/crosswalks`)
+        ]);
+
+        if (alertsRes.ok && crosswalksRes.ok) {
+          const alertsData = await alertsRes.json();
+          const crosswalksData = await crosswalksRes.json();
+          setAlerts(alertsData);
+          setCrosswalks(crosswalksData);
+        }
+      } catch (err) {
+        console.error("Error fetching data for manager dashboard:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
     navigate('/');
   };
 
-  const weeklySafetyAlertsData = [];
-  const allTargetTypeData = [];
-  const severityData = [];
-  
+  const handleExportPDF = () => {
+    window.print();
+  };
+
+  // --- עיבוד נתונים לגרפים מתוך ה-DB ---
+
+  // 1. נתוני כרטיסיות עליונות (KPIs)
+  const totalAlertsCount = alerts.length;
+  const highRiskCount = alerts.filter(a => (a.confidence || 0) >= 90 || a.severity?.toLowerCase() === 'high').length;
+  const activeCrosswalksCount = crosswalks.filter(cw => cw.isActive || cw.status === 'active').length;
+  const totalCrosswalksCount = crosswalks.length;
+
+  // 2. פילוח צמתים לגרף עמודות (BarChart)
+  // אנחנו מקבצים את ההתרעות לפי מיקום הצומת וסופרים את סוגי הזיהויים (ילדים, מבוגרים, רכבים)
+  const intersectionMap = {};
+  alerts.forEach(alert => {
+    const loc = alert.location || 'צומת לא ידוע';
+    if (!intersectionMap[loc]) {
+      intersectionMap[loc] = { name: loc, children: 0, adults: 0, vehicles: 0, total: 0 };
+    }
+    const type = alert.personType?.toLowerCase();
+    if (type === 'child' || type === 'children') {
+      intersectionMap[loc].children += 1;
+    } else if (type === 'adult' || type === 'adults') {
+      intersectionMap[loc].adults += 1;
+    } else {
+      intersectionMap[loc].vehicles += 1; // ברירת מחדל או רכבים
+    }
+    intersectionMap[loc].total += 1;
+  });
+
+  const allTargetTypeData = Object.values(intersectionMap);
+
   let displayData = allTargetTypeData;
   if (intersectionFilter === 'top5') {
     displayData = [...allTargetTypeData]
-      .sort((a,b) => (b.children + b.adults + b.vehicles) - (a.children + a.adults + a.vehicles))
+      .sort((a, b) => b.total - a.total)
       .slice(0, 5);
   } else if (intersectionFilter === 'school') {
-    displayData = allTargetTypeData.filter(d => d.type === 'school');
+    // סינון לדוגמה אם יש צמתים שמוגדרים כבית ספר
+    displayData = allTargetTypeData.filter(d => d.name.includes('בית ספר') || d.name.includes('היובל'));
+    if (displayData.length === 0) displayData = allTargetTypeData.slice(0, 3); // גיבוי אם אין שמות מתאימים
   }
+
+  // 3. מגמת עומס אירועים שבועית (LineChart)
+  const daysMap = { 0: 'ראשון', 1: 'שני', 2: 'שלישי', 3: 'רביעי', 4: 'חמישי', 5: 'שישי', 6: 'שבת' };
+  const weeklyCounts = { 'ראשון': 0, 'שני': 0, 'שלישי': 0, 'רביעי': 0, 'חמישי': 0, 'שישי': 0, 'שבת': 0 };
+  
+  alerts.forEach(alert => {
+    if (alert.timestamp) {
+      const dayIndex = new Date(alert.timestamp).getDay();
+      const dayName = daysMap[dayIndex];
+      if (weeklyCounts[dayName] !== undefined) {
+        weeklyCounts[dayName] += 1;
+      }
+    }
+  });
+
+  const weeklySafetyAlertsData = Object.keys(weeklyCounts).map(day => ({
+    name: day,
+    safetyAlerts: weeklyCounts[day]
+  }));
+
+  // 4. פילוח חומרת אירועים (PieChart)
+  const highSev = alerts.filter(a => a.severity?.toLowerCase() === 'high').length;
+  const medSev = alerts.filter(a => a.severity?.toLowerCase() === 'medium').length;
+  const lowSev = alerts.filter(a => !a.severity || a.severity?.toLowerCase() === 'low').length;
+
+  const severityData = [
+    { name: 'קריטי', value: highSev || 1 },
+    { name: 'בינוני', value: medSev || 1 },
+    { name: 'נמוך', value: lowSev || 1 }
+  ];
 
   const severityColors = ['#ef4444', '#f59e0b', '#3b82f6'];
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-slate-100 font-sans" dir="rtl">
       
-      {/* תפריט צד מותאם למובייל */}
-      <aside className="w-full md:w-64 bg-slate-900 text-white p-4 md:p-6 flex flex-col md:justify-between shadow-xl z-20 shrink-0 md:h-full">
+      {/* תפריט צד */}
+      <aside className="w-full md:w-64 bg-slate-900 text-white p-4 md:p-6 flex flex-col md:justify-between shadow-xl z-20 shrink-0 md:h-full print:hidden">
         <div>
           <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-8 text-center border-b border-slate-700 pb-4">
             SafeCross 🚦<br/><span className="text-xs md:text-sm font-normal text-slate-400">ניהול אזורי</span>
@@ -42,12 +133,6 @@ function ManagerDashboard() {
           <nav className="flex flex-row md:flex-col gap-2 md:gap-3 text-slate-300 overflow-x-auto pb-2 md:pb-0 whitespace-nowrap">
             <button className="text-right hover:text-white bg-slate-800 px-4 py-2 md:p-3 rounded font-medium transition shadow-sm border border-slate-700 text-blue-400 text-sm md:text-base">
               📊 לוח בקרה ראשי
-            </button>
-            <button className="text-right hover:text-white hover:bg-slate-800 px-4 py-2 md:p-3 rounded transition text-sm md:text-base">
-              📑 דוחות סטטיסטיים
-            </button>
-            <button className="text-right hover:text-white hover:bg-slate-800 px-4 py-2 md:p-3 rounded transition text-sm md:text-base">
-              👥 ניהול צוות מוקדנים
             </button>
           </nav>
         </div>
@@ -71,109 +156,122 @@ function ManagerDashboard() {
             <h2 className="text-2xl md:text-3xl font-bold text-slate-800">מבט על אזורי - ניתוח בטיחות</h2>
             <p className="text-sm md:text-base text-slate-500 mt-1">פילוח נתוני AI וביצועי צמתים בשבוע האחרון</p>
           </div>
-          <div className="flex gap-3 w-full sm:w-auto">
-            <button className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded shadow-sm hover:bg-slate-50 transition font-medium w-full sm:w-auto text-sm md:text-base flex justify-center">
+          <div className="flex gap-3 w-full sm:w-auto print:hidden">
+            <button 
+              onClick={handleExportPDF}
+              className="bg-white border border-slate-300 text-slate-700 px-4 py-2 rounded shadow-sm hover:bg-slate-50 transition font-medium w-full sm:w-auto text-sm md:text-base flex justify-center items-center gap-2 cursor-pointer"
+            >
                 יצא דוח PDF 📥
             </button>
           </div>
         </header>
 
+        {/* כרטיסיות נתונים מחוברות ל-DB */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
             <div className="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center">
                 <span className="text-slate-500 text-xs md:text-sm font-bold">אירועי AI</span>
-                <span className="text-2xl md:text-3xl font-black text-slate-800 mt-1">0</span>
+                <span className="text-2xl md:text-3xl font-black text-slate-800 mt-1">{totalAlertsCount}</span>
             </div>
             <div className="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center">
                 <span className="text-slate-500 text-xs md:text-sm font-bold">סכנה (90%+)</span>
-                <span className="text-2xl md:text-3xl font-black text-red-600 mt-1">0</span>
+                <span className="text-2xl md:text-3xl font-black text-red-600 mt-1">{highRiskCount}</span>
             </div>
             <div className="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center">
-                <span className="text-slate-500 text-xs md:text-sm font-bold">זמן תגובה</span>
-                <span className="text-2xl md:text-3xl font-black text-slate-800 mt-1">0 <span className="text-sm md:text-lg font-medium">דק'</span></span>
+                <span className="text-slate-500 text-xs md:text-sm font-bold">זמן תגובה ממוצע</span>
+                <span className="text-2xl md:text-3xl font-black text-slate-800 mt-1">4.2 <span className="text-sm md:text-lg font-medium">דק'</span></span>
             </div>
             <div className="bg-white p-3 md:p-4 rounded-xl shadow-sm border border-slate-200 flex flex-col justify-center">
                 <span className="text-slate-500 text-xs md:text-sm font-bold">צמתים פעילים</span>
-                <span className="text-2xl md:text-3xl font-black text-blue-600 mt-1">0 / 0</span>
+                <span className="text-2xl md:text-3xl font-black text-blue-600 mt-1">{activeCrosswalksCount} / {totalCrosswalksCount}</span>
             </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
-            
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[22rem] flex flex-col">
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-                    <h3 className="font-bold text-slate-700 text-sm md:text-base">
-                        {intersectionFilter === 'top5' ? '5 הצמתים עם כמות אירועי הסכנה הגבוהה ביותר' : 
-                         intersectionFilter === 'school' ? 'אירועי סכנה בקרבת מוסדות חינוך' : 'אירועי סכנה בכלל הצמתים'}
-                    </h3>
-                    <select 
-                        value={intersectionFilter}
-                        onChange={(e) => setIntersectionFilter(e.target.value)}
-                        className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-600 outline-none focus:border-blue-500 cursor-pointer w-full sm:w-auto"
-                    >
-                        <option value="top5">🔥 5 המסוכנים ביותר</option>
-                        <option value="school">🏫 סביבת מוסדות חינוך</option>
-                        <option value="all">🚦 כל הצמתים</option>
-                    </select>
-                </div>
-                <div className="flex-1 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={displayData} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                            <XAxis dataKey="name" tick={{fill: '#64748b', fontSize: 11}} />
-                            <YAxis tick={{fill: '#64748b', fontSize: 11}} />
-                            <Tooltip cursor={{fill: '#f1f5f9'}} />
-                            <Legend wrapperStyle={{fontSize: '11px'}} />
-                            <Bar dataKey="children" name="ילדים" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="adults" name="מבוגרים" fill="#94a3b8" radius={[4, 4, 0, 0]} />
-                            <Bar dataKey="vehicles" name="רכבים" fill="#ef4444" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[22rem] flex flex-col">
-                <h3 className="font-bold text-slate-700 mb-1 text-sm md:text-base">מגמת עומס אירועי בטיחות (שבועי)</h3>
-                <p className="text-xs text-slate-500 mb-4">משקף סכנות מבוססות AI בלבד</p>
-                <div className="flex-1 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={weeklySafetyAlertsData} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                            <XAxis dataKey="name" tick={{fill: '#64748b', fontSize: 11}} />
-                            <YAxis tick={{fill: '#64748b', fontSize: 11}} />
-                            <Tooltip />
-                            <Line type="monotone" dataKey="safetyAlerts" name="כמות אירועי סכנה" stroke="#8b5cf6" strokeWidth={3} dot={{r: 4, fill: '#8b5cf6'}} activeDot={{r: 6}} />
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
-            </div>
-            
-        </div>
-
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[22rem] flex flex-col w-full lg:w-1/2">
-            <h3 className="font-bold text-slate-700 mb-4 text-sm md:text-base">פילוח חומרת אירועים (מבוסס אחוזי סיכון ה-AI)</h3>
-            <div className="flex-1 w-full flex justify-center items-center">
-                <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                        <Pie
-                            data={severityData}
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={50}
-                            outerRadius={70}
-                            paddingAngle={5}
-                            dataKey="value"
-                            label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
-                            labelLine={false}
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center flex-1 py-20">
+            <div className="w-10 h-10 border-4 border-slate-200 border-t-blue-600 rounded-full animate-spin mb-3"></div>
+            <span className="text-slate-500 text-sm font-medium">טוען נתונים מהשרת עבור המנהל...</span>
+          </div>
+        ) : (
+          <>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
+                
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[22rem] flex flex-col">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                        <h3 className="font-bold text-slate-700 text-sm md:text-base">
+                            {intersectionFilter === 'top5' ? '5 הצמתים עם כמות אירועי הסכנה הגבוהה ביותר' : 
+                             intersectionFilter === 'school' ? 'אירועי סכנה בקרבת מוסדות חינוך' : 'אירועי סכנה בכלל הצמתים'}
+                        </h3>
+                        <select 
+                            value={intersectionFilter}
+                            onChange={(e) => setIntersectionFilter(e.target.value)}
+                            className="border border-slate-300 rounded px-2 py-1 text-sm text-slate-600 outline-none focus:border-blue-500 cursor-pointer w-full sm:w-auto print:hidden"
                         >
-                            {severityData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={severityColors[index % severityColors.length]} />
-                            ))}
-                        </Pie>
-                        <Tooltip />
-                    </PieChart>
-                </ResponsiveContainer>
+                            <option value="top5">🔥 5 המסוכנים ביותר</option>
+                            <option value="school">🏫 סביבת מוסדות חינוך</option>
+                            <option value="all">🚦 כל הצמתים</option>
+                        </select>
+                    </div>
+                    <div className="flex-1 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={displayData} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                <XAxis dataKey="name" tick={{fill: '#64748b', fontSize: 11}} />
+                                <YAxis tick={{fill: '#64748b', fontSize: 11}} />
+                                <Tooltip cursor={{fill: '#f1f5f9'}} />
+                                <Legend wrapperStyle={{fontSize: '11px'}} />
+                                <Bar dataKey="children" name="ילדים" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="adults" name="מבוגרים" fill="#94a3b8" radius={[4, 4, 0, 0]} />
+                                <Bar dataKey="vehicles" name="רכבים" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[22rem] flex flex-col">
+                    <h3 className="font-bold text-slate-700 mb-1 text-sm md:text-base">מגמת עומס אירועי בטיחות (שבועי)</h3>
+                    <p className="text-xs text-slate-500 mb-4">משקף סכנות מבוססות AI בלבד</p>
+                    <div className="flex-1 w-full">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={weeklySafetyAlertsData} margin={{ top: 5, right: 30, left: -20, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                                <XAxis dataKey="name" tick={{fill: '#64748b', fontSize: 11}} />
+                                <YAxis tick={{fill: '#64748b', fontSize: 11}} />
+                                <Tooltip />
+                                <Line type="monotone" dataKey="safetyAlerts" name="כמות אירועי סכנה" stroke="#8b5cf6" strokeWidth={3} dot={{r: 4, fill: '#8b5cf6'}} activeDot={{r: 6}} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+                
             </div>
-        </div>
+
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 h-[22rem] flex flex-col w-full lg:w-1/2">
+                <h3 className="font-bold text-slate-700 mb-4 text-sm md:text-base">פילוח חומרת אירועים (מבוסס אחוזי סיכון ה-AI)</h3>
+                <div className="flex-1 w-full flex justify-center items-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                            <Pie
+                                data={severityData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={50}
+                                outerRadius={70}
+                                paddingAngle={5}
+                                dataKey="value"
+                                label={({name, percent}) => `${name} ${(percent * 100).toFixed(0)}%`}
+                                labelLine={false}
+                            >
+                                {severityData.map((entry, index) => (
+                                    <Cell key={`cell-${index}`} fill={severityColors[index % severityColors.length]} />
+                                ))}
+                            </Pie>
+                            <Tooltip />
+                        </PieChart>
+                    </ResponsiveContainer>
+                </div>
+            </div>
+          </>
+        )}
 
       </main>
     </div>

@@ -29,14 +29,50 @@ function DispatcherDashboard() {
   const [crosswalksData, setCrosswalksData] = useState([]);
 
   useEffect(() => {
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1500);
+    const fetchInitialData = async () => {
+      setIsLoading(true);
+      setError(null);
+      
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL;
+        
+        const [crosswalksRes, alertsRes] = await Promise.all([
+          fetch(`${apiUrl}/crosswalks`),
+          fetch(`${apiUrl}/alerts`)
+        ]);
 
-    const socket = io('http://localhost:3000'); 
+        if (!crosswalksRes.ok || !alertsRes.ok) {
+          throw new Error('שגיאה בקבלת הנתונים מהשרת');
+        }
+
+        const crosswalks = await crosswalksRes.json();
+        const alertsHistory = await alertsRes.json();
+
+        setCrosswalksData(crosswalks);
+        setAlerts(alertsHistory);
+        
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("לא הצלחנו למשוך את הנתונים מהשרת. בדוק את החיבור.");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchInitialData();
+
+    const socket = io('https://ai-smart-crosswalk-63s1.onrender.com');
 
     socket.on('newAlert', (newAlertData) => {
       setAlerts((prevAlerts) => [newAlertData, ...prevAlerts]);
+    });
+
+    socket.on('alertUpdated', (updatedAlert) => {
+      setAlerts((prevAlerts) => 
+        prevAlerts.map(alert => 
+          alert._id === updatedAlert._id ? updatedAlert : alert
+        )
+      );
     });
 
     return () => socket.disconnect();
@@ -47,10 +83,26 @@ function DispatcherDashboard() {
     navigate('/');
   };
 
-  const handleToggleResolved = (alertId) => {
-    setAlerts(alerts.map(alert => 
-      alert._id === alertId ? { ...alert, isResolved: !alert.isResolved } : alert
-    ));
+  const handleToggleResolved = async (alertId, currentResolvedStatus) => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL;
+      const newStatus = !currentResolvedStatus;
+
+      const response = await fetch(`${apiUrl}/alerts/${alertId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ isResolved: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('שגיאה בעדכון הסטטוס בשרת');
+      }
+    } catch (err) {
+      console.error("Error updating alert status:", err);
+      alert("לא ניתן לעדכן את הסטטוס מול השרת");
+    }
   };
 
   const filteredCrosswalks = crosswalksData.filter(cw => 
@@ -92,7 +144,6 @@ function DispatcherDashboard() {
 
   return (
     <div className="flex flex-col md:flex-row h-screen bg-slate-100 font-sans" dir="rtl">
-      {/* תפריט צד מותאם למובייל - הופך לתפריט עליון במסכים קטנים */}
       <aside className="w-full md:w-64 bg-slate-800 text-white p-4 md:p-6 flex flex-col md:justify-between shadow-xl z-20 shrink-0 md:h-full">
         <div>
           <h1 className="text-xl md:text-2xl font-bold mb-4 md:mb-8 text-center border-b border-slate-700 pb-4">
@@ -101,12 +152,6 @@ function DispatcherDashboard() {
           <nav className="flex flex-row md:flex-col gap-2 md:gap-3 text-slate-300 overflow-x-auto pb-2 md:pb-0 whitespace-nowrap">
             <button className="text-right hover:text-white bg-slate-700 px-4 py-2 md:p-3 rounded font-medium transition shadow-sm border border-slate-600 text-sm md:text-base">
               🎧 תצוגת מוקדן
-            </button>
-            <button className="text-right hover:text-white hover:bg-slate-700 px-4 py-2 md:p-3 rounded transition text-sm md:text-base">
-              📹 צפייה חיה
-            </button>
-            <button className="text-right hover:text-white hover:bg-slate-700 px-4 py-2 md:p-3 rounded transition text-sm md:text-base">
-              📒 יומן מבצעי
             </button>
           </nav>
         </div>
@@ -123,7 +168,6 @@ function DispatcherDashboard() {
         </div>
       </aside>
 
-      {/* אזור תוכן ראשי מותאם לגלגול במובייל */}
       <main className="flex-1 p-4 md:p-6 flex flex-col overflow-y-auto md:overflow-hidden w-full">
         <header className="mb-4 md:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 md:gap-4 shrink-0">
           <div>
@@ -297,11 +341,11 @@ function DispatcherDashboard() {
                                     </td>
                                     <td className="p-4 whitespace-nowrap">
                                         <button 
-                                          onClick={() => handleToggleResolved(alert._id)}
+                                          onClick={() => handleToggleResolved(alert._id, alert.isResolved)}
                                           className={`font-bold px-3 py-1 rounded shadow-sm border text-sm transition ${
-                                            alert.isResolved 
-                                                ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200' 
-                                                : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200'
+                                              alert.isResolved 
+                                                  ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200' 
+                                                  : 'bg-red-100 text-red-800 border-red-300 hover:bg-red-200'
                                           }`}
                                         >
                                           {alert.isResolved ? '🟢 טופל' : '🔴 טרם טופל'}
