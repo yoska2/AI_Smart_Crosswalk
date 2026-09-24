@@ -15,7 +15,7 @@ import os
 
 # --- Model (AI service needs this) ---
 MODEL_PATH = "yolov8n.pt"     # lightweight model; swap for yolov8s.pt for accuracy
-CONFIDENCE_THRESHOLD = 0.35   # ignore detections below this confidence
+CONFIDENCE_THRESHOLD = 0.5  # ignore detections below this confidence
 
 # --- Classes of interest (the detector's allow-list) ---
 # NOTE: the final allow-list = the union of classes your DANGER EVENTS reference
@@ -64,7 +64,7 @@ WINDOW_NAME = "Smart Crosswalk - Video Analysis"
 SHOW_MAX_HEIGHT = 720               # cap the displayed window height (px) so tall videos fit the screen (display only, not processing)
 
 # --- Tracking (tracker.py): give every person a stable id across frames ---
-TRACKER = "simple"                   # "simple" = our matcher (no extra deps) | "yolo" = ultralytics ByteTrack
+TRACKER = "simple"                     # "simple" = our matcher (no extra deps) | "yolo" = ultralytics ByteTrack
 TRACK_MAX_GAP_SECONDS = 0.5          # a person missing longer than this is a NEW track
 TRACK_MATCH_SPEED_H_PER_S = 6.0      # matching gate: max plausible movement per second, in body heights (running ~2-4)
 TRACK_MIN_GATE_PX = 20               # ...but never tighter than this many pixels (tiny boxes / jitter)
